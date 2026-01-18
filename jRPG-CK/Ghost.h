@@ -7,13 +7,17 @@
 class Ghost : public Snake {
 public:
     Ghost();
-    void Reset(Vector2 startPos);
-    void Update();
-    void MoveRandom(const Board& board);
-    void UpdateAI(const Board& board, Vector2 playerPos, bool isScared);
+    void ResetToPosition(Vector2 startPosition);
+    void DetermineRandomMovement(const Board& gameBoard);
+    void UpdateArtificialIntelligence(const Board& gameBoard, Vector2 playerPosition, bool isFrightened);
+    void PerformMovement(const Board& board);  // Dodano - override metody bazowej
+
+    // Nowa metoda - sprawdza czy duch mo¿e iœæ w danym kierunku
+    bool CanGhostMoveInDirection(Vector2 direction, const Board& board) const;
 
 private:
-    void MoveTowardsPlayer(const Board& board, Vector2 playerPos);
-    void MoveAwayFromPlayer(const Board& board, Vector2 playerPos);
+    void MoveTowardPlayer(const Board& gameBoard, Vector2 playerPosition);
+    void MoveAwayFromPlayer(const Board& gameBoard, Vector2 playerPosition);
 };
+
 #endif

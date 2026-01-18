@@ -1,62 +1,40 @@
 #ifndef BOARD_H
 #define BOARD_H
 
-#include "raylib.h"
-#include "Constants.h"
 #include <vector>
 
 class Board {
 public:
     Board();
 
-    // Rysowanie planszy
-    void Draw() const;
+    // Logika gry - NIE rysowanie!
+    bool CheckWallPresence(int x, int y) const;
+    bool CheckFoodPresence(int x, int y) const;
+    bool CheckPowerPelletPresence(int x, int y) const;
+    void ConsumeFoodAtPosition(int x, int y);
+    void ResetAllFood();
+    bool VerifyAllFoodConsumed() const;
+    int CountRemainingFood() const;
 
-    // Sprawdzenie czy pozycja jest œcian¹
-    bool IsWall(int x, int y) const;
-
-    // Sprawdzenie czy pozycja zawiera jedzenie
-    bool HasFood(int x, int y) const;
-
-    // Sprawdzenie czy to power pellet
-    bool IsPowerPellet(int x, int y) const;
-
-    // Zjedzenie jedzenia
-    void EatFood(int x, int y);
-
-    // Reset planszy
-    void Reset();
-
-    // Sprawdzenie czy wszystkie jedzenie zosta³o zebrane
-    bool IsAllFoodEaten() const;
-
-    // Pobierz iloœæ jedzenia
-    int GetFoodCount() const;
+    // Dostarczanie danych do renderowania
+    void ProvideGridData(std::vector<std::vector<int>>& gridDataOutput) const;
 
 private:
-    // Wymiary planszy
-    static const int WIDTH = 25;
-    static const int HEIGHT = 25;
+    static const int GRID_WIDTH = 25;  // Zmienione z GRID_WIDTH
+    static const int GRID_HEIGHT = 25; // Zmienione z GRID_HEIGHT
 
-    // Typy pól
-    enum CellType {
-        EMPTY = 0,
-        WALL = 1,
-        FOOD = 2,
-        POWER_PELLET = 3
+    enum GridCellType {
+        CELL_EMPTY = 0,
+        CELL_WALL = 1,
+        CELL_FOOD = 2,
+        CELL_POWER_PELLET = 3
     };
 
-    // Plansza - sta³y uk³ad
-    static const int layout[HEIGHT][WIDTH];
+    static const int cellLayout[GRID_HEIGHT][GRID_WIDTH]; // U¿yj nowych nazw
+    std::vector<std::vector<bool>> foodConsumptionState;
 
-    // Dynamiczny stan jedzenia
-    std::vector<std::vector<bool>> foodEaten;
-
-    // Pobierz typ komórki
-    CellType GetCellType(int x, int y) const;
-
-    // Inicjalizacja stanu jedzenia
-    void InitializeFood();
+    GridCellType DetermineCellType(int x, int y) const;
+    void InitializeFoodState();
 };
 
 #endif

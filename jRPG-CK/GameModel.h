@@ -9,39 +9,41 @@
 
 class GameModel {
 private:
-    Snake player;
-    Ghost ghost;
-    ScoreManager scoreManager;
-    Board board;
-    std::string playerName;
-    std::string currentHighScoreStr;
-    int score;
-    bool gameOver;
-    bool scaredMode;
-    int scaredTimer;
+    Snake playerCharacter;
+    Ghost enemyGhost;
+    ScoreManager scoreSystem;
+    Board gameBoard;
+    std::string playerIdentifier;
+    std::string topScoreDisplay;
+    int currentPoints;
+    bool isGameCompleted;
+    bool isGhostFrightened;
+    int frightenedTimer;
 
 public:
     GameModel();
 
-    // Input handling
-    void HandleNameInput(int key, bool backspace);
-    void HandlePlayerInput(int key);
+    // Przetwarzanie wejœcia
+    void ProcessCharacterInput(int characterCode, bool isBackspace);
+    void ProcessDirectionInput(int directionKey);
 
-    // Game logic
-    void Update();
-    void GameOver();
-    void ResetLevel();
+    // Logika gry
+    void AdvanceGameLogic();
+    void CompleteGameWithSave();
+    void ResetEntireGame();
+    void ResetCurrentLevel();
 
-    // State access methods
-    std::string GetPlayerName() const;
-    std::string GetHighScoreString() const;
-    int GetScore() const;
-    bool IsGameOver() const;
-    bool IsScaredMode() const;
+    // Status gry (zwracany przez parametry)
+    void RetrieveGameStatus(bool& gameOverStatus, int& scoreValue,
+        bool& ghostFrightenedStatus, int& foodRemaining) const;
+    void RetrievePlayerInformation(std::string& playerName, std::string& highScoreText) const;
 
-    // Object access
-    const Snake& GetPlayer() const;
-    const Ghost& GetGhost() const;
-    const Board& GetBoard() const;
+    // Dane do renderowania
+    void ProvideRenderingData(std::deque<Vector2>& playerSegments,
+        Color& playerVisualColor,
+        Vector2& ghostLocation,
+        Color& ghostVisualColor,
+        std::vector<std::vector<int>>& boardGrid) const;
 };
+
 #endif

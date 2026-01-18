@@ -2,158 +2,164 @@
 #include "raylib.h"
 #include "Constants.h"
 
-GameModel::GameModel() : score(0), gameOver(false), scaredMode(false), scaredTimer(0) {
-    currentHighScoreStr = scoreManager.GetHighScore();
+GameModel::GameModel() : currentPoints(0), isGameCompleted(false),
+isGhostFrightened(false), frightenedTimer(0) {
+    std::string highScoreText;
+    scoreSystem.GetHighScore(); // Inicjalizacja
+    topScoreDisplay = scoreSystem.GetHighScore();
 }
 
-void GameModel::HandleNameInput(int key, bool backspace) {
-    if (backspace && !playerName.empty()) {
-        playerName.pop_back();
+void GameModel::ProcessCharacterInput(int characterCode, bool isBackspace) {
+    if (isBackspace && !playerIdentifier.empty()) {
+        playerIdentifier.pop_back();
     }
-    else if (key >= 32 && key <= 125 && playerName.length() < 15) {
-        playerName += (char)key;
+    else if (characterCode >= 32 && characterCode <= 125 && playerIdentifier.length() < 15) {
+        playerIdentifier += (char)characterCode;
     }
 }
 
-void GameModel::HandlePlayerInput(int key) {
-    Vector2 currentPos = player.GetHeadPosition();
+void GameModel::ProcessDirectionInput(int directionKey) {
+    // SprawdŸ czy gracz mo¿e iœæ w wybranym kierunku
+    Vector2 desiredDirection = { 0, 0 };
 
-    if (key == KEY_UP && !board.IsWall((int)currentPos.x, (int)currentPos.y - 1))
-        player.ChangeDirection({ 0, -1 });
-    if (key == KEY_DOWN && !board.IsWall((int)currentPos.x, (int)currentPos.y + 1))
-        player.ChangeDirection({ 0, 1 });
-    if (key == KEY_LEFT && !board.IsWall((int)currentPos.x - 1, (int)currentPos.y))
-        player.ChangeDirection({ -1, 0 });
-    if (key == KEY_RIGHT && !board.IsWall((int)currentPos.x + 1, (int)currentPos.y))
-        player.ChangeDirection({ 1, 0 });
+    if (directionKey == KEY_UP) desiredDirection = { 0, -1 };
+    else if (directionKey == KEY_DOWN) desiredDirection = { 0, 1 };
+    else if (directionKey == KEY_LEFT) desiredDirection = { -1, 0 };
+    else if (directionKey == KEY_RIGHT) desiredDirection = { 1, 0 };
+
+    // Zamiast bezpoœrednio zmieniaæ kierunek, zapisz go w buforze
+    playerCharacter.QueueDirection(desiredDirection, GetTime());
 }
 
-void GameModel::Update() {
+void GameModel::AdvanceGameLogic() {
     // Aktualizacja timera przestraszenia
-    if (scaredMode) {
-        scaredTimer--;
-        if (scaredTimer <= 0) {
-            scaredMode = false;
+    if (isGhostFrightened) {
+        frightenedTimer--;
+        if (frightenedTimer <= 0) {
+            isGhostFrightened = false;
         }
     }
 
-    // Ruch gracza - sprawdzenie kolizji ze œcian¹
-    Vector2 nextPos = player.GetHeadPosition();
-    Vector2 dir = player.GetDirection();
-    nextPos.x += dir.x;
-    nextPos.y += dir.y;
-
-    // Zawijanie przez tunele
-    if (nextPos.x < 0) nextPos.x = CELL_COUNT - 1;
-    else if (nextPos.x >= CELL_COUNT) nextPos.x = 0;
-
-    if (!board.IsWall((int)nextPos.x, (int)nextPos.y)) {
-        player.Update();
-    }
+    // Ruch gracza
+    playerCharacter.PerformMovement(gameBoard);
 
     // Ruch ducha
-    ghost.UpdateAI(board, player.GetHeadPosition(), scaredMode);
-    Vector2 ghostNextPos = ghost.GetHeadPosition();
-    Vector2 ghostDir = ghost.GetDirection();
-    ghostNextPos.x += ghostDir.x;
-    ghostNextPos.y += ghostDir.y;
+    std::deque<Vector2> playerSegments;
+    Color playerColor;
+    playerCharacter.ProvideVisualData(playerSegments, playerColor);
 
-    // Zawijanie przez tunele dla ducha
-    if (ghostNextPos.x < 0) ghostNextPos.x = CELL_COUNT - 1;
-    else if (ghostNextPos.x >= CELL_COUNT) ghostNextPos.x = 0;
-
-    if (!board.IsWall((int)ghostNextPos.x, (int)ghostNextPos.y)) {
-        ghost.Update();
+    if (!playerSegments.empty()) {
+        enemyGhost.UpdateArtificialIntelligence(gameBoard, playerSegments[0], isGhostFrightened);
+        enemyGhost.PerformMovement(gameBoard);  // To wywo³uje ruch ducha!
     }
 
     // Kolizja z duchem
-    Vector2 playerPos = player.GetHeadPosition();
-    Vector2 ghostPos = ghost.GetHeadPosition();
-    if ((int)playerPos.x == (int)ghostPos.x && (int)playerPos.y == (int)ghostPos.y) {
-        if (scaredMode) {
-            // Zjedzenie ducha w trybie przestraszenia
-            ghost.Reset({ 20, 5 });
-            score += 200;
-            scaredMode = false; // Reset trybu po zjedzeniu ducha
-        }
-        else {
-            GameOver();
+    std::deque<Vector2> ghostSegments;
+    Color ghostColor;
+    enemyGhost.ProvideVisualData(ghostSegments, ghostColor);
+
+    if (!playerSegments.empty() && !ghostSegments.empty()) {
+        Vector2 playerPos = playerSegments[0];
+        Vector2 ghostPos = ghostSegments[0];
+
+        if ((int)playerPos.x == (int)ghostPos.x && (int)playerPos.y == (int)ghostPos.y) {
+            if (isGhostFrightened) {
+                // Zjedzenie ducha w trybie przestraszenia
+                enemyGhost.ResetToPosition({ 20, 5 });
+                currentPoints += 200;
+                isGhostFrightened = false;
+            }
+            else {
+                CompleteGameWithSave();
+            }
         }
     }
 
     // Zbieranie jedzenia
-    Vector2 head = player.GetHeadPosition();
-    int headX = (int)head.x;
-    int headY = (int)head.y;
-    if (board.HasFood(headX, headY)) {
-        board.EatFood(headX, headY);
+    if (!playerSegments.empty()) {
+        Vector2 head = playerSegments[0];
+        int headX = (int)head.x;
+        int headY = (int)head.y;
 
-        // Sprawdzenie czy to power pellet
-        if (board.IsPowerPellet(headX, headY)) {
-            score += 50;
-            scaredMode = true;
-            scaredTimer = 300;  // 5 sekund przy 60 FPS
-        }
-        else {
-            score += 10;
-        }
+        if (gameBoard.CheckFoodPresence(headX, headY)) {
+            gameBoard.ConsumeFoodAtPosition(headX, headY);
 
-        // Sprawdzenie czy wszystkie jedzenie zebrane
-        if (board.IsAllFoodEaten()) {
-            ResetLevel();
-            score += 1000;  // Bonus za ukoñczenie poziomu
+            if (gameBoard.CheckPowerPelletPresence(headX, headY)) {
+                currentPoints += 50;
+                isGhostFrightened = true;
+                frightenedTimer = 300;
+            }
+            else {
+                currentPoints += 10;
+            }
+
+            if (gameBoard.VerifyAllFoodConsumed()) {
+                ResetCurrentLevel();
+                currentPoints += 1000;
+            }
         }
     }
 }
 
-void GameModel::GameOver() {
-    scoreManager.SaveScore(playerName, score);
-    currentHighScoreStr = scoreManager.GetHighScore();
-    player.Reset({ 6, 9 });
-    ghost.Reset({ 20, 5 });
-    board.Reset();
-    score = 0;
-    gameOver = true;
-    scaredMode = false;
-    scaredTimer = 0;
+void GameModel::CompleteGameWithSave() {
+    scoreSystem.SaveScore(playerIdentifier, currentPoints);
+    topScoreDisplay = scoreSystem.GetHighScore();
+    playerCharacter.InitializeAtPosition({ 6, 9 });
+    enemyGhost.ResetToPosition({ 20, 5 });
+    gameBoard.ResetAllFood();
+    currentPoints = 0;
+    isGameCompleted = true;
+    isGhostFrightened = false;
+    frightenedTimer = 0;
 }
 
-void GameModel::ResetLevel() {
-    player.Reset({ 6, 9 });
-    ghost.Reset({ 20, 5 });
-    board.Reset();
-    scaredMode = false;
-    scaredTimer = 0;
+void GameModel::ResetEntireGame() {
+    playerCharacter.InitializeAtPosition({ 6, 9 });
+    enemyGhost.ResetToPosition({ 20, 5 });
+    gameBoard.ResetAllFood();
+    currentPoints = 0;
+    isGameCompleted = false;
+    isGhostFrightened = false;
+    frightenedTimer = 0;
 }
 
-std::string GameModel::GetPlayerName() const {
-    return playerName;
+void GameModel::ResetCurrentLevel() {
+    playerCharacter.InitializeAtPosition({ 6, 9 });
+    enemyGhost.ResetToPosition({ 20, 5 });
+    gameBoard.ResetAllFood();
+    isGhostFrightened = false;
+    frightenedTimer = 0;
 }
 
-std::string GameModel::GetHighScoreString() const {
-    return currentHighScoreStr;
+void GameModel::RetrieveGameStatus(bool& gameOverStatus, int& scoreValue,
+    bool& ghostFrightenedStatus, int& foodRemaining) const {
+    gameOverStatus = isGameCompleted;
+    scoreValue = currentPoints;
+    ghostFrightenedStatus = isGhostFrightened;
+    foodRemaining = gameBoard.CountRemainingFood();
 }
 
-int GameModel::GetScore() const {
-    return score;
+void GameModel::RetrievePlayerInformation(std::string& playerName, std::string& highScoreText) const {
+    playerName = playerIdentifier;
+    highScoreText = topScoreDisplay;
 }
 
-bool GameModel::IsGameOver() const {
-    return gameOver;
-}
+void GameModel::ProvideRenderingData(std::deque<Vector2>& playerSegments,
+    Color& playerVisualColor,
+    Vector2& ghostLocation,
+    Color& ghostVisualColor,
+    std::vector<std::vector<int>>& boardGrid) const {
+    playerCharacter.ProvideVisualData(playerSegments, playerVisualColor);
 
-bool GameModel::IsScaredMode() const {
-    return scaredMode;
-}
+    std::deque<Vector2> ghostSegments;
+    enemyGhost.ProvideVisualData(ghostSegments, ghostVisualColor);
 
-const Snake& GameModel::GetPlayer() const {
-    return player;
-}
+    if (!ghostSegments.empty()) {
+        ghostLocation = ghostSegments[0];
+    }
+    else {
+        ghostLocation = { 0, 0 };
+    }
 
-const Ghost& GameModel::GetGhost() const {
-    return ghost;
-}
-
-const Board& GameModel::GetBoard() const {
-    return board;
+    gameBoard.ProvideGridData(boardGrid);
 }

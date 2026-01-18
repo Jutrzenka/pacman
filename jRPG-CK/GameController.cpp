@@ -16,29 +16,37 @@ void GameController::ProcessInput() {
     if (state == MENU) {
         int key = GetCharPressed();
         while (key > 0) {
-            model.HandleNameInput(key, false);
+            model.ProcessCharacterInput(key, false);
             key = GetCharPressed();
         }
 
         if (IsKeyPressed(KEY_BACKSPACE)) {
-            model.HandleNameInput(0, true);
+            model.ProcessCharacterInput(0, true);
         }
 
-        if (IsKeyPressed(KEY_ENTER) && !model.GetPlayerName().empty()) {
+        std::string playerName, highScore;
+        model.RetrievePlayerInformation(playerName, highScore);
+
+        if (IsKeyPressed(KEY_ENTER) && !playerName.empty()) {
+            model.ResetEntireGame();  // Reset przed rozpoczêciem
             state = GAMEPLAY;
+        }
+
+        if (IsKeyPressed(KEY_ESCAPE)) {
+            state = GAMEPLAY;  // Dodaj mo¿liwoœæ pominiêcia menu
         }
     }
     else if (state == GAMEPLAY) {
-        if (IsKeyPressed(KEY_UP)) model.HandlePlayerInput(KEY_UP);
-        if (IsKeyPressed(KEY_DOWN)) model.HandlePlayerInput(KEY_DOWN);
-        if (IsKeyPressed(KEY_LEFT)) model.HandlePlayerInput(KEY_LEFT);
-        if (IsKeyPressed(KEY_RIGHT)) model.HandlePlayerInput(KEY_RIGHT);
+        if (IsKeyPressed(KEY_UP)) model.ProcessDirectionInput(KEY_UP);
+        if (IsKeyPressed(KEY_DOWN)) model.ProcessDirectionInput(KEY_DOWN);
+        if (IsKeyPressed(KEY_LEFT)) model.ProcessDirectionInput(KEY_LEFT);
+        if (IsKeyPressed(KEY_RIGHT)) model.ProcessDirectionInput(KEY_RIGHT);
         if (IsKeyPressed(KEY_ESCAPE)) state = PAUSED;
     }
     else if (state == PAUSED) {
         if (IsKeyPressed(KEY_ESCAPE)) state = GAMEPLAY;
         if (IsKeyPressed(KEY_Q)) {
-            model.GameOver();
+            model.CompleteGameWithSave();
             state = MENU;
         }
     }
@@ -47,8 +55,15 @@ void GameController::ProcessInput() {
 void GameController::Update() {
     if (state == GAMEPLAY) {
         if (ShouldUpdate(0.12)) {
-            model.Update();
-            if (model.IsGameOver()) {
+            model.AdvanceGameLogic();
+
+            bool gameOverStatus;
+            int scoreValue;
+            bool ghostFrightenedStatus;
+            int foodRemaining;
+            model.RetrieveGameStatus(gameOverStatus, scoreValue, ghostFrightenedStatus, foodRemaining);
+
+            if (gameOverStatus) {
                 state = MENU;
             }
         }

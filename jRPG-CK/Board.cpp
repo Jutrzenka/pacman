@@ -1,8 +1,8 @@
 #include "Board.h"
 #include <algorithm>
 
-// Sta³y uk³ad planszy Pacman'a (25x25)
-const int Board::layout[HEIGHT][WIDTH] = {
+// Sta³y uk³ad planszy (bez zmian)
+const int Board::cellLayout[GRID_HEIGHT][GRID_WIDTH] = {
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
     {0,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0},
     {0,2,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,2,0},
@@ -31,78 +31,50 @@ const int Board::layout[HEIGHT][WIDTH] = {
 };
 
 Board::Board() {
-    InitializeFood();
+    InitializeFoodState();
 }
 
-void Board::Draw() const {
-    for (int y = 0; y < HEIGHT; y++) {
-        for (int x = 0; x < WIDTH; x++) {
-            CellType cell = GetCellType(x, y);
-
-            switch (cell) {
-            case WALL:
-                DrawRectangle(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE, BLUE);
-                // Dodanie wewnêtrznego cienia dla œciany
-                DrawRectangleLines(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE, DARKBLUE);
-                break;
-
-            case FOOD:
-                if (!foodEaten[y][x]) {
-                    DrawCircle((int)(x * CELL_SIZE + CELL_SIZE / 2.0f),
-                        (int)(y * CELL_SIZE + CELL_SIZE / 2.0f),
-                        CELL_SIZE / 8, YELLOW);
-                }
-                break;
-
-            case POWER_PELLET:
-                if (!foodEaten[y][x]) {
-                    DrawCircle((int)(x * CELL_SIZE + CELL_SIZE / 2.0f),
-                        (int)(y * CELL_SIZE + CELL_SIZE / 2.0f),
-                        CELL_SIZE / 4, YELLOW);
-                }
-                break;
-
-            default:
-                break;
-            }
-        }
+bool Board::CheckWallPresence(int x, int y) const {
+    if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) {
+        return false; // Poza plansz¹ traktujemy jako puste
     }
+    return DetermineCellType(x, y) == CELL_WALL;
 }
 
-bool Board::IsWall(int x, int y) const {
-    if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) {
-        return true; // Poza plansz¹ traktujemy jak œcianê
-    }
-    return GetCellType(x, y) == WALL;
-}
-
-bool Board::HasFood(int x, int y) const {
-    if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) {
+bool Board::CheckFoodPresence(int x, int y) const {
+    if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) {
         return false;
     }
 
-    CellType cell = GetCellType(x, y);
-    if ((cell == FOOD || cell == POWER_PELLET) && !foodEaten[y][x]) {
-        return true;
+    GridCellType cell = DetermineCellType(x, y);
+    return (cell == CELL_FOOD || cell == CELL_POWER_PELLET) &&
+        !foodConsumptionState[y][x];
+}
+
+bool Board::CheckPowerPelletPresence(int x, int y) const {
+    if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) {
+        return false;
     }
-    return false;
+    return DetermineCellType(x, y) == CELL_POWER_PELLET &&
+        !foodConsumptionState[y][x];
 }
 
-void Board::EatFood(int x, int y) {
-    if (x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT) {
-        foodEaten[y][x] = true;
+void Board::ConsumeFoodAtPosition(int x, int y) {
+    if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
+        foodConsumptionState[y][x] = true;
     }
 }
 
-void Board::Reset() {
-    InitializeFood();
+void Board::ResetAllFood() {
+    InitializeFoodState();
 }
 
-bool Board::IsAllFoodEaten() const {
-    for (int y = 0; y < HEIGHT; y++) {
-        for (int x = 0; x < WIDTH; x++) {
-            CellType cell = GetCellType(x, y);
-            if ((cell == FOOD || cell == POWER_PELLET) && !foodEaten[y][x]) {
+bool Board::VerifyAllFoodConsumed() const {
+    for (int y = 0; y < GRID_HEIGHT; y++) {
+        for (int x = 0; x < GRID_WIDTH; x++) {
+            GridCellType cell = DetermineCellType(x, y);
+            if ((cell == CELL_FOOD || cell == CELL_POWER_PELLET) &&
+                !foodConsumptionState[y][x]) {
                 return false;
             }
         }
@@ -110,11 +82,11 @@ bool Board::IsAllFoodEaten() const {
     return true;
 }
 
-int Board::GetFoodCount() const {
+int Board::CountRemainingFood() const {
     int count = 0;
-    for (int y = 0; y < HEIGHT; y++) {
-        for (int x = 0; x < WIDTH; x++) {
-            if (HasFood(x, y)) {
+    for (int y = 0; y < GRID_HEIGHT; y++) {
+        for (int x = 0; x < GRID_WIDTH; x++) {
+            if (CheckFoodPresence(x, y)) {
                 count++;
             }
         }
@@ -122,28 +94,41 @@ int Board::GetFoodCount() const {
     return count;
 }
 
-Board::CellType Board::GetCellType(int x, int y) const {
-    if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) {
-        return WALL;
-    }
-    return static_cast<CellType>(layout[y][x]);
-}
+void Board::ProvideGridData(std::vector<std::vector<int>>& gridDataOutput) const {
+    gridDataOutput.resize(GRID_HEIGHT, std::vector<int>(GRID_WIDTH));
 
-void Board::InitializeFood() {
-    foodEaten.resize(HEIGHT, std::vector<bool>(WIDTH, false));
+    for (int y = 0; y < GRID_HEIGHT; y++) {
+        for (int x = 0; x < GRID_WIDTH; x++) {
+            GridCellType cell = DetermineCellType(x, y);
 
-    // Ustaw jedzenie jako niezjedzone tylko tam gdzie powinno byæ
-    for (int y = 0; y < HEIGHT; y++) {
-        for (int x = 0; x < WIDTH; x++) {
-            CellType cell = GetCellType(x, y);
-            foodEaten[y][x] = !(cell == FOOD || cell == POWER_PELLET);
+            if (cell == CELL_WALL) {
+                gridDataOutput[y][x] = 1; // Œciana
+            }
+            else if ((cell == CELL_FOOD || cell == CELL_POWER_PELLET) &&
+                !foodConsumptionState[y][x]) {
+                gridDataOutput[y][x] = (cell == CELL_POWER_PELLET) ? 3 : 2; // Jedzenie/Power pellet
+            }
+            else {
+                gridDataOutput[y][x] = 0; // Puste
+            }
         }
     }
 }
 
-bool Board::IsPowerPellet(int x, int y) const {
-    if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) {
-        return false;
+Board::GridCellType Board::DetermineCellType(int x, int y) const {
+    if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT) {
+        return CELL_EMPTY;
     }
-    return GetCellType(x, y) == POWER_PELLET;
+    return static_cast<GridCellType>(cellLayout[y][x]);
+}
+
+void Board::InitializeFoodState() {
+    foodConsumptionState.resize(GRID_HEIGHT, std::vector<bool>(GRID_WIDTH, false));
+
+    for (int y = 0; y < GRID_HEIGHT; y++) {
+        for (int x = 0; x < GRID_WIDTH; x++) {
+            GridCellType cell = DetermineCellType(x, y);
+            foodConsumptionState[y][x] = !(cell == CELL_FOOD || cell == CELL_POWER_PELLET);
+        }
+    }
 }
