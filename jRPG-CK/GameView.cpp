@@ -18,13 +18,14 @@ void GameView::DrawMenu(const GameModel& model) {
 }
 
 void GameView::DrawGameplay(const GameModel& model) {
-    ClearBackground({ 0, 0, 50, 255 });
+    ClearBackground(BLACK);
 
-    DrawFood(model.GetFood());
+    DrawBoard(model.GetBoard());
     DrawSnake(model.GetPlayer());
-    DrawGhost(model.GetGhost());
+    DrawGhost(model.GetGhost(), model.IsScaredMode());
 
     DrawText(TextFormat("WYNIK: %i", model.GetScore()), 20, 20, 20, YELLOW);
+    DrawText(TextFormat("POZOSTALO JEDZENIA: %i", model.GetBoard().GetFoodCount()), 20, 50, 20, YELLOW);
 }
 
 void GameView::DrawPause() {
@@ -34,20 +35,64 @@ void GameView::DrawPause() {
 
 void GameView::DrawSnake(const Snake& snake) {
     for (const auto& segment : snake.GetBody()) {
-        DrawRectangle(segment.x * CELL_SIZE, segment.y * CELL_SIZE, CELL_SIZE, CELL_SIZE, snake.GetColor());
+        // Rysowanie Pacmana jako ¿ó³tego kó³ka z "ustami"
+        int x = (int)(segment.x * CELL_SIZE);
+        int y = (int)(segment.y * CELL_SIZE);
+
+        DrawCircle((float)(x + CELL_SIZE / 2),
+            (float)(y + CELL_SIZE / 2),
+            (float)(CELL_SIZE / 2 - 2), YELLOW);
+
+        // Rysowanie "ust" Pacmana
+        Vector2 direction = snake.GetDirection();
+        if (direction.x != 0 || direction.y != 0) {
+            float startAngle = 0.0f;
+            if (direction.x == 1) startAngle = 0.0f;      // Prawo
+            else if (direction.x == -1) startAngle = 180.0f; // Lewo
+            else if (direction.y == 1) startAngle = 90.0f;   // Dó³
+            else if (direction.y == -1) startAngle = 270.0f; // Góra
+
+            DrawCircleSector({ (float)(x + CELL_SIZE / 2.0f), (float)(y + CELL_SIZE / 2.0f) },
+                (float)(CELL_SIZE / 2 - 2), startAngle + 45, startAngle + 315, 0, BLACK);
+        }
     }
 }
 
-void GameView::DrawGhost(const Ghost& ghost) {
+void GameView::DrawGhost(const Ghost& ghost, bool isScared) {
     const auto& body = ghost.GetBody();
     if (!body.empty()) {
-        DrawRectangle(body[0].x * CELL_SIZE, body[0].y * CELL_SIZE, CELL_SIZE, CELL_SIZE, ghost.GetColor());
+        Color ghostColor = isScared ? SKYBLUE : ghost.GetColor();
+
+        // Rysowanie ducha jako zaokr¹glonego kwadratu
+        int x = (int)(body[0].x * CELL_SIZE);
+        int y = (int)(body[0].y * CELL_SIZE);
+
+        // G³ówny korpus
+        DrawRectangleRounded(Rectangle{ (float)x + 2, (float)y + 2,
+                                       (float)(CELL_SIZE - 4), (float)(CELL_SIZE - 4) },
+            0.5f, 8, ghostColor);
+
+        // Oczy
+        int eyeSize = CELL_SIZE / 8;
+        DrawCircle((float)(x + CELL_SIZE / 3), (float)(y + CELL_SIZE / 3),
+            (float)eyeSize, WHITE);
+        DrawCircle((float)(x + 2 * CELL_SIZE / 3), (float)(y + CELL_SIZE / 3),
+            (float)eyeSize, WHITE);
+        DrawCircle((float)(x + CELL_SIZE / 3), (float)(y + CELL_SIZE / 3),
+            (float)(eyeSize / 2), BLACK);
+        DrawCircle((float)(x + 2 * CELL_SIZE / 3), (float)(y + CELL_SIZE / 3),
+            (float)(eyeSize / 2), BLACK);
+
+        // Jeœli przestraszony - narysuj przestraszon¹ twarz
+        if (isScared) {
+            DrawCircle((float)(x + CELL_SIZE / 3), (float)(y + 2 * CELL_SIZE / 3),
+                (float)(eyeSize / 2), WHITE);
+            DrawCircle((float)(x + 2 * CELL_SIZE / 3), (float)(y + 2 * CELL_SIZE / 3),
+                (float)(eyeSize / 2), WHITE);
+        }
     }
 }
 
-void GameView::DrawFood(const Food& food) {
-    Vector2 pos = food.GetPosition();
-    DrawCircle(pos.x * CELL_SIZE + CELL_SIZE / 2,
-        pos.y * CELL_SIZE + CELL_SIZE / 2,
-        CELL_SIZE / 4, WHITE);
+void GameView::DrawBoard(const Board& board) {
+    board.Draw();
 }

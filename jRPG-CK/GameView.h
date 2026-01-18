@@ -12,7 +12,7 @@ public:
 
 private:
     void DrawSnake(const Snake& snake);
-    void DrawGhost(const Ghost& ghost);
-    void DrawFood(const Food& food);
+    void DrawGhost(const Ghost& ghost, bool isScared);
+    void DrawBoard(const Board& board);
 };
 #endif

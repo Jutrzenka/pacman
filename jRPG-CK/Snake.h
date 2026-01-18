@@ -25,5 +25,7 @@ public:
     Vector2 GetHeadPosition() const;
     const std::deque<Vector2>& GetBody() const;
     Color GetColor() const;
+    Vector2 GetDirection() const;
 };
+
 #endif

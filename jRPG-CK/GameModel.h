@@ -3,20 +3,22 @@
 
 #include "Snake.h"
 #include "Ghost.h"
-#include "Food.h"
 #include "ScoreManager.h"
+#include "Board.h"
 #include <string>
 
 class GameModel {
 private:
     Snake player;
     Ghost ghost;
-    Food food;
     ScoreManager scoreManager;
+    Board board;
     std::string playerName;
     std::string currentHighScoreStr;
     int score;
     bool gameOver;
+    bool scaredMode;
+    int scaredTimer;
 
 public:
     GameModel();
@@ -28,16 +30,18 @@ public:
     // Game logic
     void Update();
     void GameOver();
+    void ResetLevel();
 
     // State access methods
     std::string GetPlayerName() const;
     std::string GetHighScoreString() const;
     int GetScore() const;
     bool IsGameOver() const;
+    bool IsScaredMode() const;
 
-    // Object access (const references for rendering)
+    // Object access
     const Snake& GetPlayer() const;
     const Ghost& GetGhost() const;
-    const Food& GetFood() const;
+    const Board& GetBoard() const;
 };
 #endif

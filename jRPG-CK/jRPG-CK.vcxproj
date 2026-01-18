@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Board.cpp" />
     <ClCompile Include="Food.cpp" />
     <ClCompile Include="GameController.cpp" />
     <ClCompile Include="GameModel.cpp" />
@@ -29,13 +30,13 @@
     <ClCompile Include="Snake.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Board.h" />
     <ClInclude Include="Constants.h" />
     <ClInclude Include="Food.h" />
     <ClInclude Include="GameController.h" />
     <ClInclude Include="GameModel.h" />
     <ClInclude Include="GameView.h" />
     <ClInclude Include="Ghost.h" />
-    <ClInclude Include="Main.h" />
     <ClInclude Include="ScoreManager.h" />
     <ClInclude Include="Snake.h" />
   </ItemGroup>
