@@ -16,39 +16,53 @@ bool shouldUpdate(double interval) {
 class GameRenderer {
 public:
     void Draw(GameLogic& logic, GameState state) {
-        ClearBackground({ 173, 204, 96, 255 });
+        ClearBackground({ 0, 0, 50, 255 });  // Niebieskie tｳo jak w Pacman
         if (state == MENU) {
-            DrawText("SNAKE", 375 - MeasureText("SNAKE", 50) / 2, 80, 50, { 43, 51, 24, 255 });
+            DrawText("PACMAN SNAKE", 375 - MeasureText("PACMAN SNAKE", 50) / 2, 80, 50, YELLOW);
 
             // Animacja w�ｿa
             logic.menuAnim.Draw(375, 180);
 
             // Panel wynik
-            DrawRectangle(175, 250, 400, 110, ColorAlpha(BLACK, 0.1f));
-            DrawText("NAJLEPSZY WYNIK:", 375 - MeasureText("NAJLEPSZY WYNIK:", 20) / 2, 265, 20, DARKGRAY);
-            DrawText(logic.currentHighScoreStr.c_str(), 375 - MeasureText(logic.currentHighScoreStr.c_str(), 20) / 2, 300, 20, { 43, 51, 24, 255 });
+            DrawRectangle(175, 250, 400, 110, ColorAlpha(BLACK, 0.3f));
+            DrawText("NAJLEPSZY WYNIK:", 375 - MeasureText("NAJLEPSZY WYNIK:", 20) / 2, 265, 20, WHITE);
+            DrawText(logic.currentHighScoreStr.c_str(), 375 - MeasureText(logic.currentHighScoreStr.c_str(), 20) / 2, 300, 20, YELLOW);
 
-            DrawText(TextFormat("TWOJE IMIE: %s", logic.playerName.c_str()), 375 - MeasureText(TextFormat("TWOJE IMIE: %s", logic.playerName.c_str()), 20) / 2, 400, 20, BLACK);
+            DrawText(TextFormat("TWOJE IMIE: %s", logic.playerName.c_str()), 375 - MeasureText(TextFormat("TWOJE IMIE: %s", logic.playerName.c_str()), 20) / 2, 400, 20, WHITE);
 
             if (!logic.playerName.empty()) {
-                DrawText("NACI君IJ ENTER, ABY ZACZ･ﾆ", 375 - MeasureText("NACI君IJ ENTER, ABY ZACZ･ﾆ", 20) / 2, 480, 20, DARKGREEN);
+                DrawText("NACI君IJ ENTER, ABY ZACZ･ﾆ", 375 - MeasureText("NACI君IJ ENTER, ABY ZACZ･ﾆ", 20) / 2, 480, 20, GREEN);
             }
         }
         else {
-            DrawRectangle(logic.food.position.x * CELL_SIZE, logic.food.position.y * CELL_SIZE, CELL_SIZE, CELL_SIZE, RED);
-            for (auto const& s : logic.player.body) DrawRectangle(s.x * CELL_SIZE, s.y * CELL_SIZE, CELL_SIZE, CELL_SIZE, logic.player.color);
-            for (auto const& s : logic.ai.body) DrawRectangle(s.x * CELL_SIZE, s.y * CELL_SIZE, CELL_SIZE, CELL_SIZE, logic.ai.color);
-            DrawText(TextFormat("WYNIK: %i", logic.score), 20, 20, 20, { 43, 51, 24, 255 });
+            // Rysuj jedzenie jako maｳe kko (jak kropka w Pacman)
+            DrawCircle(food.position.x * CELL_SIZE + CELL_SIZE / 2,
+                food.position.y * CELL_SIZE + CELL_SIZE / 2,
+                CELL_SIZE / 4, WHITE);
+
+            // Rysuj gracza (ｿty wｹｿ jak Pacman)
+            for (auto const& s : logic.player.body)
+                DrawRectangle(s.x * CELL_SIZE, s.y * CELL_SIZE, CELL_SIZE, CELL_SIZE, logic.player.color);
+
+            // Rysuj ducha (czerwony kwadrat)
+            DrawRectangle(logic.ghost.body[0].x * CELL_SIZE,
+                logic.ghost.body[0].y * CELL_SIZE,
+                CELL_SIZE, CELL_SIZE, logic.ghost.color);
+
+            DrawText(TextFormat("WYNIK: %i", logic.score), 20, 20, 20, YELLOW);
+
             if (state == PAUSED) {
                 DrawRectangle(0, 0, 750, 750, ColorAlpha(BLACK, 0.5f));
                 DrawText("PAUZA", 310, 350, 40, WHITE);
             }
         }
     }
+private:
+    Food food;  // Dodano dla rysowania jedzenia
 };
 
 int main() {
-    InitWindow(750, 750, "Pacman C");
+    InitWindow(750, 750, "Pacman Snake");
     SetTargetFPS(60);
     SetExitKey(KEY_NULL);
 
@@ -64,7 +78,9 @@ int main() {
         }
         else if (state == GAMEPLAY) {
             logic.HandlePlayerInput();
-            if (shouldUpdate(0.12)) if (logic.Update()) state = MENU;
+            if (shouldUpdate(0.12))
+                if (logic.Update())
+                    state = MENU;
             if (IsKeyPressed(KEY_ESCAPE)) state = PAUSED;
         }
         else if (state == PAUSED) {

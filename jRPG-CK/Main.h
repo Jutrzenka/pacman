@@ -52,7 +52,7 @@ class Snake {
 public:
     deque<Vector2> body = { {6,9}, {5,9}, {4,9} };
     Vector2 direction = { 1, 0 };
-    Color color = { 43, 51, 24, 255 };
+    Color color = YELLOW;  // Zmieniono na ¿ó³ty jak Pacman
     bool addSegment = false;
 
     virtual void Update() {
@@ -72,18 +72,37 @@ public:
     }
 };
 
-class AISnake : public Snake {
+class Ghost : public Snake {  // Zmieniono nazwê z AISnake na Ghost
 public:
-    AISnake() {
-        color = DARKBLUE;
-        body = { {20,5}, {20,6}, {20,7} };
+    Ghost() {
+        color = RED;  // Duszki maj¹ ró¿ne kolory
+        body = { {20,5} };  // Tylko jeden segment - kwadrat
+        direction = { -1, 0 };
     }
-    void DecideDirection(Vector2 foodPos) {
-        Vector2 head = body[0];
-        if (foodPos.x > head.x && direction.x != -1) direction = { 1, 0 };
-        else if (foodPos.x < head.x && direction.x != 1) direction = { -1, 0 };
-        else if (foodPos.y > head.y && direction.y != -1) direction = { 0, 1 };
-        else if (foodPos.y < head.y && direction.y != 1) direction = { 0, -1 };
+
+    void Reset(Vector2 startPos) {
+        body = { startPos };
+        direction = { -1, 0 };
+    }
+
+    void Update() override {
+        Vector2 newHead = { body[0].x + direction.x, body[0].y + direction.y };
+        if (newHead.x < 0) newHead.x = CELL_COUNT - 1;
+        else if (newHead.x >= CELL_COUNT) newHead.x = 0;
+        if (newHead.y < 0) newHead.y = CELL_COUNT - 1;
+        else if (newHead.y >= CELL_COUNT) newHead.y = 0;
+        body[0] = newHead;  // Ghost siê nie wyd³u¿a, tylko przesuwa
+    }
+
+    void MoveRandom() {
+        // Proste losowe poruszanie siê duszka
+        int dir = GetRandomValue(0, 3);
+        switch (dir) {
+        case 0: direction = { 1, 0 }; break;  // prawo
+        case 1: direction = { -1, 0 }; break; // lewo
+        case 2: direction = { 0, 1 }; break;  // dó³
+        case 3: direction = { 0, -1 }; break; // góra
+        }
     }
 };
 
@@ -113,7 +132,7 @@ public:
 class GameLogic {
 public:
     Snake player;
-    AISnake ai;
+    Ghost ghost;  // Zmieniono na pojedynczego ducha
     Food food;
     ScoreManager scoreManager;
     MenuAnimation menuAnim;
@@ -143,28 +162,28 @@ public:
     }
 
     bool Update() {
-        ai.DecideDirection(food.position);
-        Vector2 nextP = GetWrappedPos(player.body[0], player.direction);
-        Vector2 nextA = GetWrappedPos(ai.body[0], ai.direction);
+        // Duch porusza siê losowo
+        if (GetRandomValue(0, 100) < 10) {  // 10% szans na zmianê kierunku w ka¿dej klatce
+            ghost.MoveRandom();
+        }
 
-        if (CheckBodyCollision(nextP, player.body) || CheckBodyCollision(nextP, ai.body)) {
+        ghost.Update();
+
+        Vector2 nextP = GetWrappedPos(player.body[0], player.direction);
+
+        // Kolizja gracza z duchem
+        if (CheckCollision(nextP, ghost.body[0])) {
             GameOver();
             return true;
         }
-        if (CheckBodyCollision(nextA, ai.body) || CheckBodyCollision(nextA, player.body)) ai.Reset({ 20, 5 });
 
         if (nextP.x == food.position.x && nextP.y == food.position.y) {
             player.addSegment = true;
             score++;
             food.Respawn();
         }
-        else if (nextA.x == food.position.x && nextA.y == food.position.y) {
-            ai.addSegment = true;
-            food.Respawn();
-        }
 
         player.Update();
-        ai.Update();
         return false;
     }
 
@@ -177,16 +196,15 @@ public:
         return p;
     }
 
-    bool CheckBodyCollision(Vector2 head, deque<Vector2>& body) {
-        for (auto const& segment : body) if (head.x == segment.x && head.y == segment.y) return true;
-        return false;
+    bool CheckCollision(Vector2 a, Vector2 b) {
+        return a.x == b.x && a.y == b.y;
     }
 
     void GameOver() {
         scoreManager.SaveScore(playerName, score);
         currentHighScoreStr = scoreManager.GetHighScore();
         player.Reset({ 6, 9 });
-        ai.Reset({ 20, 5 });
+        ghost.Reset({ 20, 5 });
         score = 0;
     }
 };
