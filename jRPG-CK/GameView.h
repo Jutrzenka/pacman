@@ -3,6 +3,8 @@
 
 #include "raylib.h"
 #include "GameModel.h"
+#include <vector>
+#include <deque>
 
 class GameView {
 public:
@@ -11,8 +13,9 @@ public:
     void DrawPause();
 
 private:
-    void DrawSnake(const Snake& snake);
-    void DrawGhost(const Ghost& ghost);
-    void DrawFood(const Food& food);
+    void DrawPlayerCharacter(const std::deque<Vector2>& segments, Color color);
+    void DrawEnemyGhost(Vector2 position, Color color, bool isFrightened);
+    void DrawBoardGrid(const std::vector<std::vector<int>>& gridData);
 };
+
 #endif

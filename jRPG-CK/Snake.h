@@ -3,27 +3,49 @@
 
 #include "raylib.h"
 #include <deque>
+#include <vector>
+
+class Board;  // Forward declaration
 
 class Snake {
-private:
-    std::deque<Vector2> body;
-    Vector2 direction;
-    Color color;
-    bool addSegment;
+protected:  // TUTAJ MUSI BYÆ protected
+    std::deque<Vector2> bodySegments;
+    Vector2 currentDirection;
+    Color visualColor;
+    bool shouldGrowNextMove;
+
+    // Buforowanie zmian kierunku
+    Vector2 queuedDirection;
+    double queuedDirectionTime;
+    const double QUEUE_TIMEOUT = 1.0;  // 1 sekunda
 
 public:
     Snake();
-    virtual ~Snake() = default;
 
-    void Update();
-    void Reset(Vector2 startPos);
-    void ChangeDirection(Vector2 newDirection);
-    void Grow();
-    void SetColor(Color newColor);
+    // Akcje
+    void PerformMovement(const Board& board);
+    void QueueDirection(Vector2 newDirection, double currentTime);
+    void UpdateDirection(Vector2 newDirection);
+    void InitializeAtPosition(Vector2 startPosition);
+    void ScheduleGrowth();
+    void ApplyColor(Color newColor);
 
-    bool IsGrowing() const;
-    Vector2 GetHeadPosition() const;
-    const std::deque<Vector2>& GetBody() const;
-    Color GetColor() const;
+    // Logika kolizji
+    bool DetectSelfCollision() const;
+    bool CheckCollisionWithPosition(Vector2 position) const;
+
+    // Sprawdzanie ruchu
+    bool CanMoveInDirection(Vector2 direction, const Board& board) const;
+
+    // Metody dostarczaj¹ce dane do renderowania
+    void ProvideVisualData(std::deque<Vector2>& segmentsBuffer, Color& colorBuffer) const;
+    Vector2 CalculateNextPosition() const;
+
+    // Nowa metoda - szukanie alternatywnego kierunku
+    Vector2 FindAlternativeDirection(const Board& board) const;
+
+private:
+    Vector2 ApplyBoundaryWrapping(Vector2 position) const;
 };
+
 #endif
