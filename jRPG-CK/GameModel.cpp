@@ -2,10 +2,17 @@
 #include "raylib.h"
 #include "Constants.h"
 
-GameModel::GameModel() : currentPoints(0), isGameCompleted(false),
-isGhostFrightened(false), frightenedTimer(0) {
+GameModel::GameModel() :
+    redGhost(Ghost::RED_GHOST),
+    greenGhost(Ghost::GREEN_GHOST),
+    purpleGhost(Ghost::PURPLE_GHOST),
+    currentPoints(0),
+    isGameCompleted(false),
+    isGhostFrightened(false),
+    frightenedTimer(0) {
+
     std::string highScoreText;
-    scoreSystem.GetHighScore(); // Inicjalizacja
+    scoreSystem.GetHighScore();
     topScoreDisplay = scoreSystem.GetHighScore();
 }
 
@@ -19,7 +26,6 @@ void GameModel::ProcessCharacterInput(int characterCode, bool isBackspace) {
 }
 
 void GameModel::ProcessDirectionInput(int directionKey) {
-    // SprawdŸ czy gracz mo¿e iœæ w wybranym kierunku
     Vector2 desiredDirection = { 0, 0 };
 
     if (directionKey == KEY_UP) desiredDirection = { 0, -1 };
@@ -27,12 +33,10 @@ void GameModel::ProcessDirectionInput(int directionKey) {
     else if (directionKey == KEY_LEFT) desiredDirection = { -1, 0 };
     else if (directionKey == KEY_RIGHT) desiredDirection = { 1, 0 };
 
-    // Zamiast bezpoœrednio zmieniaæ kierunek, zapisz go w buforze
     playerCharacter.QueueDirection(desiredDirection, GetTime());
 }
 
 void GameModel::AdvanceGameLogic() {
-    // Aktualizacja timera przestraszenia
     if (isGhostFrightened) {
         frightenedTimer--;
         if (frightenedTimer <= 0) {
@@ -40,42 +44,85 @@ void GameModel::AdvanceGameLogic() {
         }
     }
 
-    // Ruch gracza
     playerCharacter.PerformMovement(gameBoard);
 
-    // Ruch ducha
     std::deque<Vector2> playerSegments;
     Color playerColor;
     playerCharacter.ProvideVisualData(playerSegments, playerColor);
 
     if (!playerSegments.empty()) {
-        enemyGhost.UpdateArtificialIntelligence(gameBoard, playerSegments[0], isGhostFrightened);
-        enemyGhost.PerformMovement(gameBoard);  // To wywo³uje ruch ducha!
+        Vector2 nextPos = playerCharacter.CalculateNextPosition();
+        Vector2 playerDirection = { nextPos.x - playerSegments[0].x, nextPos.y - playerSegments[0].y };
+
+        Vector2 greenGhostPosition;
+        std::deque<Vector2> greenSegments;
+        Color greenColor;
+        greenGhost.ProvideVisualData(greenSegments, greenColor);
+        if (!greenSegments.empty()) {
+            greenGhostPosition = greenSegments[0];
+        }
+
+        redGhost.UpdateAI(gameBoard, playerSegments[0], playerDirection, greenGhostPosition, isGhostFrightened);
+        greenGhost.UpdateAI(gameBoard, playerSegments[0], playerDirection, greenGhostPosition, isGhostFrightened);
+        purpleGhost.UpdateAI(gameBoard, playerSegments[0], playerDirection, greenGhostPosition, isGhostFrightened);
+
+        redGhost.PerformMovement(gameBoard);
+        greenGhost.PerformMovement(gameBoard);
+        purpleGhost.PerformMovement(gameBoard);
     }
 
-    // Kolizja z duchem
-    std::deque<Vector2> ghostSegments;
-    Color ghostColor;
-    enemyGhost.ProvideVisualData(ghostSegments, ghostColor);
+    std::deque<Vector2> redSegments, greenSegments, purpleSegments;
+    Color redColor, greenColor, purpleColor;
+    redGhost.ProvideVisualData(redSegments, redColor);
+    greenGhost.ProvideVisualData(greenSegments, greenColor);
+    purpleGhost.ProvideVisualData(purpleSegments, purpleColor);
 
-    if (!playerSegments.empty() && !ghostSegments.empty()) {
+    if (!playerSegments.empty()) {
         Vector2 playerPos = playerSegments[0];
-        Vector2 ghostPos = ghostSegments[0];
 
-        if ((int)playerPos.x == (int)ghostPos.x && (int)playerPos.y == (int)ghostPos.y) {
-            if (isGhostFrightened) {
-                // Zjedzenie ducha w trybie przestraszenia
-                enemyGhost.ResetToPosition({ 20, 5 });
-                currentPoints += 200;
-                isGhostFrightened = false;
+        if (!redSegments.empty()) {
+            Vector2 ghostPos = redSegments[0];
+            if ((int)playerPos.x == (int)ghostPos.x && (int)playerPos.y == (int)ghostPos.y) {
+                if (isGhostFrightened) {
+                    redGhost.ResetToPosition({ 20, 5 });
+                    currentPoints += 200;
+                    isGhostFrightened = false;
+                }
+                else {
+                    CompleteGameWithSave();
+                }
             }
-            else {
-                CompleteGameWithSave();
+        }
+
+        if (!greenSegments.empty()) {
+            Vector2 ghostPos = greenSegments[0];
+            if ((int)playerPos.x == (int)ghostPos.x && (int)playerPos.y == (int)ghostPos.y) {
+                if (isGhostFrightened) {
+                    greenGhost.ResetToPosition({ 5, 5 });
+                    currentPoints += 200;
+                    isGhostFrightened = false;
+                }
+                else {
+                    CompleteGameWithSave();
+                }
+            }
+        }
+
+        if (!purpleSegments.empty()) {
+            Vector2 ghostPos = purpleSegments[0];
+            if ((int)playerPos.x == (int)ghostPos.x && (int)playerPos.y == (int)ghostPos.y) {
+                if (isGhostFrightened) {
+                    purpleGhost.ResetToPosition({ 10, 5 });
+                    currentPoints += 200;
+                    isGhostFrightened = false;
+                }
+                else {
+                    CompleteGameWithSave();
+                }
             }
         }
     }
 
-    // Zbieranie jedzenia
     if (!playerSegments.empty()) {
         Vector2 head = playerSegments[0];
         int headX = (int)head.x;
@@ -105,7 +152,9 @@ void GameModel::CompleteGameWithSave() {
     scoreSystem.SaveScore(playerIdentifier, currentPoints);
     topScoreDisplay = scoreSystem.GetHighScore();
     playerCharacter.InitializeAtPosition({ 6, 9 });
-    enemyGhost.ResetToPosition({ 20, 5 });
+    redGhost.ResetToPosition({ 20, 5 });
+    greenGhost.ResetToPosition({ 5, 5 });
+    purpleGhost.ResetToPosition({ 10, 5 });
     gameBoard.ResetAllFood();
     currentPoints = 0;
     isGameCompleted = true;
@@ -115,7 +164,9 @@ void GameModel::CompleteGameWithSave() {
 
 void GameModel::ResetEntireGame() {
     playerCharacter.InitializeAtPosition({ 6, 9 });
-    enemyGhost.ResetToPosition({ 20, 5 });
+    redGhost.ResetToPosition({ 20, 5 });
+    greenGhost.ResetToPosition({ 5, 5 });
+    purpleGhost.ResetToPosition({ 10, 5 });
     gameBoard.ResetAllFood();
     currentPoints = 0;
     isGameCompleted = false;
@@ -125,7 +176,9 @@ void GameModel::ResetEntireGame() {
 
 void GameModel::ResetCurrentLevel() {
     playerCharacter.InitializeAtPosition({ 6, 9 });
-    enemyGhost.ResetToPosition({ 20, 5 });
+    redGhost.ResetToPosition({ 20, 5 });
+    greenGhost.ResetToPosition({ 5, 5 });
+    purpleGhost.ResetToPosition({ 10, 5 });
     gameBoard.ResetAllFood();
     isGhostFrightened = false;
     frightenedTimer = 0;
@@ -146,19 +199,39 @@ void GameModel::RetrievePlayerInformation(std::string& playerName, std::string& 
 
 void GameModel::ProvideRenderingData(std::deque<Vector2>& playerSegments,
     Color& playerVisualColor,
-    Vector2& ghostLocation,
-    Color& ghostVisualColor,
+    Vector2& redGhostLocation,
+    Vector2& greenGhostLocation,
+    Vector2& purpleGhostLocation,
     std::vector<std::vector<int>>& boardGrid) const {
+
     playerCharacter.ProvideVisualData(playerSegments, playerVisualColor);
 
-    std::deque<Vector2> ghostSegments;
-    enemyGhost.ProvideVisualData(ghostSegments, ghostVisualColor);
+    std::deque<Vector2> redSegments, greenSegments, purpleSegments;
+    Color redColor, greenColor, purpleColor;
 
-    if (!ghostSegments.empty()) {
-        ghostLocation = ghostSegments[0];
+    redGhost.ProvideVisualData(redSegments, redColor);
+    greenGhost.ProvideVisualData(greenSegments, greenColor);
+    purpleGhost.ProvideVisualData(purpleSegments, purpleColor);
+
+    if (!redSegments.empty()) {
+        redGhostLocation = redSegments[0];
     }
     else {
-        ghostLocation = { 0, 0 };
+        redGhostLocation = { 0, 0 };
+    }
+
+    if (!greenSegments.empty()) {
+        greenGhostLocation = greenSegments[0];
+    }
+    else {
+        greenGhostLocation = { 0, 0 };
+    }
+
+    if (!purpleSegments.empty()) {
+        purpleGhostLocation = purpleSegments[0];
+    }
+    else {
+        purpleGhostLocation = { 0, 0 };
     }
 
     gameBoard.ProvideGridData(boardGrid);

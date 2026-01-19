@@ -10,7 +10,6 @@ void GameView::DrawMenu(const GameModel& model) {
     std::string playerName, highScoreText;
     model.RetrievePlayerInformation(playerName, highScoreText);
 
-    // Podziel tekst na linie
     int yPos = 265;
     size_t pos = 0;
     std::string delimiter = "\n";
@@ -36,14 +35,14 @@ void GameView::DrawMenu(const GameModel& model) {
 void GameView::DrawGameplay(const GameModel& model) {
     ClearBackground(BLACK);
 
-    // Pobierz dane z modelu
     std::deque<Vector2> playerSegments;
     Color playerColor;
-    Vector2 ghostPosition;
-    Color ghostColor;
+    Vector2 redGhostPosition, greenGhostPosition, purpleGhostPosition;
     std::vector<std::vector<int>> boardGrid;
 
-    model.ProvideRenderingData(playerSegments, playerColor, ghostPosition, ghostColor, boardGrid);
+    model.ProvideRenderingData(playerSegments, playerColor,
+        redGhostPosition, greenGhostPosition, purpleGhostPosition,
+        boardGrid);
 
     bool gameOverStatus;
     int scoreValue;
@@ -51,14 +50,12 @@ void GameView::DrawGameplay(const GameModel& model) {
     int foodRemaining;
     model.RetrieveGameStatus(gameOverStatus, scoreValue, ghostFrightenedStatus, foodRemaining);
 
-    // Rysuj planszê
     DrawBoardGrid(boardGrid);
-
-    // Rysuj gracza
     DrawPlayerCharacter(playerSegments, playerColor);
 
-    // Rysuj ducha
-    DrawEnemyGhost(ghostPosition, ghostColor, ghostFrightenedStatus);
+    DrawEnemyGhost(redGhostPosition, RED, ghostFrightenedStatus);
+    DrawEnemyGhost(greenGhostPosition, GREEN, ghostFrightenedStatus);
+    DrawEnemyGhost(purpleGhostPosition, PURPLE, ghostFrightenedStatus);
 
     DrawText(TextFormat("WYNIK: %i", scoreValue), 20, 20, 20, YELLOW);
     DrawText(TextFormat("POZOSTALO JEDZENIA: %i", foodRemaining), 20, 50, 20, YELLOW);
@@ -86,12 +83,10 @@ void GameView::DrawEnemyGhost(Vector2 position, Color color, bool isFrightened) 
     int x = (int)(position.x * CELL_SIZE);
     int y = (int)(position.y * CELL_SIZE);
 
-    // G³ówny korpus
     DrawRectangleRounded(Rectangle{ (float)x + 2, (float)y + 2,
                                    (float)(CELL_SIZE - 4), (float)(CELL_SIZE - 4) },
         0.5f, 8, ghostColor);
 
-    // Oczy
     int eyeSize = CELL_SIZE / 8;
     DrawCircle((float)(x + CELL_SIZE / 3), (float)(y + CELL_SIZE / 3),
         (float)eyeSize, WHITE);
@@ -102,7 +97,6 @@ void GameView::DrawEnemyGhost(Vector2 position, Color color, bool isFrightened) 
     DrawCircle((float)(x + 2 * CELL_SIZE / 3), (float)(y + CELL_SIZE / 3),
         (float)(eyeSize / 2), BLACK);
 
-    // Jeœli przestraszony
     if (isFrightened) {
         DrawCircle((float)(x + CELL_SIZE / 3), (float)(y + 2 * CELL_SIZE / 3),
             (float)(eyeSize / 2), WHITE);
@@ -118,20 +112,20 @@ void GameView::DrawBoardGrid(const std::vector<std::vector<int>>& gridData) {
             float yPos = y * CELL_SIZE;
 
             switch (gridData[y][x]) {
-            case 1: // Œciana
+            case 1:
                 DrawRectangle((int)xPos, (int)yPos,
                     CELL_SIZE, CELL_SIZE, BLUE);
                 DrawRectangleLines((int)xPos, (int)yPos,
                     CELL_SIZE, CELL_SIZE, DARKBLUE);
                 break;
 
-            case 2: // Jedzenie
+            case 2:
                 DrawCircle((int)(xPos + CELL_SIZE / 2.0f),
                     (int)(yPos + CELL_SIZE / 2.0f),
                     CELL_SIZE / 8, YELLOW);
                 break;
 
-            case 3: // Power pellet
+            case 3:
                 DrawCircle((int)(xPos + CELL_SIZE / 2.0f),
                     (int)(yPos + CELL_SIZE / 2.0f),
                     CELL_SIZE / 4, YELLOW);

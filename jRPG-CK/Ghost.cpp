@@ -3,46 +3,62 @@
 #include "Constants.h"
 #include <cmath>
 
-Ghost::Ghost() {
-    ApplyColor(RED);
-    ResetToPosition({ 20,5 });
+Ghost::Ghost(GhostType color) : ghostColorType(color), shouldGrowNextMove(false), movementCounter(0) {
+    switch (ghostColorType) {
+    case RED_GHOST:
+        visualColor = RED;
+        speedModifier = 5;  // 80% prêdkoœci (porusza siê 8 razy na 10 klatek)
+        break;
+    case GREEN_GHOST:
+        visualColor = GREEN;
+        speedModifier = 6;  // 60% prêdkoœci
+        break;
+    case PURPLE_GHOST:
+        visualColor = PURPLE;
+        speedModifier = 7;  // 70% prêdkoœci
+        break;
+    }
+    ResetToPosition({ 20, 5 });
 }
 
 void Ghost::ResetToPosition(Vector2 startPosition) {
-    Snake::InitializeAtPosition(startPosition);
-    UpdateDirection({ -1, 0 });
+    bodySegments = {
+        startPosition,
+        {startPosition.x - 1, startPosition.y},
+        {startPosition.x - 2, startPosition.y}
+    };
+    currentDirection = { -1, 0 };
+    shouldGrowNextMove = false;
+    movementCounter = 0;
 }
 
 void Ghost::PerformMovement(const Board& board) {
-    // Duch ma dostêp do protected pól Snake
+    // Ka¿dy duch porusza siê z inn¹ prêdkoœci¹
+    if (!ShouldMoveThisFrame()) {
+        return;
+    }
+
     if (bodySegments.empty()) return;
 
     Vector2 nextPos = CalculateNextPosition();
 
-    // SprawdŸ czy mo¿na iœæ w aktualnym kierunku
     if (board.CheckWallPresence((int)nextPos.x, (int)nextPos.y)) {
-        // Œciana przed nami - znajdŸ alternatywny kierunek
         Vector2 alternativeDirection = FindAlternativeDirection(board);
 
-        // Jeœli alternatywny kierunek ró¿ni siê od aktualnego, zmieñ go
         if (alternativeDirection.x != currentDirection.x ||
             alternativeDirection.y != currentDirection.y) {
             currentDirection = alternativeDirection;
-
-            // Przelicz nastêpn¹ pozycjê z nowym kierunkiem
             nextPos = CalculateNextPosition();
 
-            // Upewnij siê, ¿e nowy kierunek te¿ nie prowadzi do œciany
             if (board.CheckWallPresence((int)nextPos.x, (int)nextPos.y)) {
-                return;  // Nadal œciana - zatrzymaj siê
+                return;
             }
         }
         else {
-            return;  // Nie znaleziono alternatywnego kierunku - zatrzymaj siê
+            return;
         }
     }
 
-    // Wykonaj ruch
     Vector2 newHead = nextPos;
     bodySegments.push_front(newHead);
 
@@ -54,8 +70,113 @@ void Ghost::PerformMovement(const Board& board) {
     }
 }
 
-bool Ghost::CanGhostMoveInDirection(Vector2 direction, const Board& board) const {
-    return CanMoveInDirection(direction, board);
+bool Ghost::ShouldMoveThisFrame() {
+    movementCounter++;
+
+    // Prêdkoœæ na podstawie wspó³czynnika: speedModifier/10
+    // Np. dla speedModifier = 8: porusza siê gdy movementCounter % 10 < 8
+    // Czyli 8 razy na 10 klatek = 80% prêdkoœci
+
+    // Reset licznika, aby unikn¹æ przepe³nienia
+    if (movementCounter >= 1000) {
+        movementCounter = 0;
+    }
+
+    // Duch porusza siê tylko w okreœlonej czêœci klatek
+    return (movementCounter % 10) < speedModifier;
+}
+
+void Ghost::UpdateAI(const Board& gameBoard, Vector2 playerPosition,
+    Vector2 playerDirection, Vector2 greenGhostPosition,
+    bool isFrightened) {
+    if (isFrightened) {
+        MoveAwayFromPlayer(gameBoard, playerPosition);
+    }
+    else {
+        Vector2 target;
+
+        switch (ghostColorType) {
+        case RED_GHOST:
+            target = CalculateRedTarget(playerPosition);
+            break;
+        case GREEN_GHOST:
+            target = CalculateGreenTarget(playerPosition, playerDirection);
+            break;
+        case PURPLE_GHOST:
+            target = CalculatePurpleTarget(playerPosition, playerDirection, greenGhostPosition);
+            break;
+        }
+
+        MoveTowardTarget(gameBoard, target);
+    }
+}
+
+void Ghost::ApplyColor(Color color) {
+    visualColor = color;
+}
+
+void Ghost::ProvideVisualData(std::deque<Vector2>& segmentsBuffer, Color& colorBuffer) const {
+    segmentsBuffer = bodySegments;
+    colorBuffer = visualColor;
+}
+
+Vector2 Ghost::CalculateNextPosition() const {
+    if (bodySegments.empty()) return { 0, 0 };
+
+    Vector2 currentHead = bodySegments[0];
+    Vector2 newHead = {
+        currentHead.x + currentDirection.x,
+        currentHead.y + currentDirection.y
+    };
+
+    return ApplyBoundaryWrapping(newHead);
+}
+
+Vector2 Ghost::ApplyBoundaryWrapping(Vector2 position) const {
+    Vector2 wrapped = position;
+
+    if (wrapped.x < 0) wrapped.x = CELL_COUNT - 1;
+    else if (wrapped.x >= CELL_COUNT) wrapped.x = 0;
+
+    if (wrapped.y < 0) wrapped.y = CELL_COUNT - 1;
+    else if (wrapped.y >= CELL_COUNT) wrapped.y = 0;
+
+    return wrapped;
+}
+
+bool Ghost::CanMoveInDirection(Vector2 direction, const Board& board) const {
+    if (bodySegments.empty()) return false;
+
+    Vector2 currentHead = bodySegments[0];
+    Vector2 nextPosition = {
+        currentHead.x + direction.x,
+        currentHead.y + direction.y
+    };
+
+    nextPosition = ApplyBoundaryWrapping(nextPosition);
+
+    return !board.CheckWallPresence((int)nextPosition.x, (int)nextPosition.y);
+}
+
+Vector2 Ghost::FindAlternativeDirection(const Board& board) const {
+    std::vector<Vector2> possibleDirections = {
+        {1, 0}, {-1, 0}, {0, 1}, {0, -1}
+    };
+
+    Vector2 oppositeDirection = { -currentDirection.x, -currentDirection.y };
+
+    for (const auto& direction : possibleDirections) {
+        if ((direction.x != oppositeDirection.x || direction.y != oppositeDirection.y) &&
+            CanMoveInDirection(direction, board)) {
+            return direction;
+        }
+    }
+
+    if (CanMoveInDirection(oppositeDirection, board)) {
+        return oppositeDirection;
+    }
+
+    return currentDirection;
 }
 
 void Ghost::DetermineRandomMovement(const Board& gameBoard) {
@@ -66,102 +187,28 @@ void Ghost::DetermineRandomMovement(const Board& gameBoard) {
             {1, 0}, {-1, 0}, {0, 1}, {0, -1}
         };
 
-        // ZnajdŸ kierunki bez œcian
         std::vector<Vector2> validDirections;
         for (const auto& direction : possibleDirections) {
-            if (CanGhostMoveInDirection(direction, gameBoard)) {
+            if (CanMoveInDirection(direction, gameBoard)) {
                 validDirections.push_back(direction);
             }
         }
 
-        // Jeœli s¹ dostêpne kierunki, wybierz losowy
         if (!validDirections.empty()) {
             int index = GetRandomValue(0, (int)validDirections.size() - 1);
-            UpdateDirection(validDirections[index]);
+            currentDirection = validDirections[index];
         }
     }
-}
-
-void Ghost::UpdateArtificialIntelligence(const Board& gameBoard, Vector2 playerPosition, bool isFrightened) {
-    if (isFrightened) {
-        MoveAwayFromPlayer(gameBoard, playerPosition);
-    }
-    else {
-        MoveTowardPlayer(gameBoard, playerPosition);
-    }
-
-    // Duch nie wykonuje ruchu tutaj - ruch wykonuje siê w PerformMovement()
-}
-
-void Ghost::MoveTowardPlayer(const Board& gameBoard, Vector2 playerPosition) {
-    // Pobierz dostêpne kierunki
-    std::vector<Vector2> possibleDirections = {
-        {1, 0}, {-1, 0}, {0, 1}, {0, -1}
-    };
-
-    std::vector<Vector2> validDirections;
-    for (const auto& direction : possibleDirections) {
-        if (CanGhostMoveInDirection(direction, gameBoard)) {
-            validDirections.push_back(direction);
-        }
-    }
-
-    if (validDirections.empty()) {
-        DetermineRandomMovement(gameBoard);
-        return;
-    }
-
-    // Wybierz kierunek który najbli¿ej gracza
-    Vector2 bestDirection = validDirections[0];
-    float minDistance = 9999.0f;
-
-    std::deque<Vector2> ghostSegments;
-    Color ghostColor;
-    ProvideVisualData(ghostSegments, ghostColor);
-
-    if (ghostSegments.empty()) return;
-
-    Vector2 currentPos = ghostSegments[0];
-
-    for (const auto& direction : validDirections) {
-        Vector2 testPosition = {
-            currentPos.x + direction.x,
-            currentPos.y + direction.y
-        };
-
-        // Zastosuj zawijanie granic
-        if (testPosition.x < 0) testPosition.x = CELL_COUNT - 1;
-        else if (testPosition.x >= CELL_COUNT) testPosition.x = 0;
-        if (testPosition.y < 0) testPosition.y = CELL_COUNT - 1;
-        else if (testPosition.y >= CELL_COUNT) testPosition.y = 0;
-
-        float distX = fabsf(playerPosition.x - testPosition.x);
-        float distY = fabsf(playerPosition.y - testPosition.y);
-
-        // Uwzglêdnij zawijanie w odleg³oœci
-        if (distX > CELL_COUNT / 2) distX = CELL_COUNT - distX;
-        if (distY > CELL_COUNT / 2) distY = CELL_COUNT - distY;
-
-        float distance = sqrtf(distX * distX + distY * distY);
-
-        if (distance < minDistance) {
-            minDistance = distance;
-            bestDirection = direction;
-        }
-    }
-
-    UpdateDirection(bestDirection);
 }
 
 void Ghost::MoveAwayFromPlayer(const Board& gameBoard, Vector2 playerPosition) {
-    // Pobierz dostêpne kierunki
     std::vector<Vector2> possibleDirections = {
         {1, 0}, {-1, 0}, {0, 1}, {0, -1}
     };
 
     std::vector<Vector2> validDirections;
     for (const auto& direction : possibleDirections) {
-        if (CanGhostMoveInDirection(direction, gameBoard)) {
+        if (CanMoveInDirection(direction, gameBoard)) {
             validDirections.push_back(direction);
         }
     }
@@ -171,17 +218,11 @@ void Ghost::MoveAwayFromPlayer(const Board& gameBoard, Vector2 playerPosition) {
         return;
     }
 
-    // Wybierz kierunek który najdalej od gracza
     Vector2 bestDirection = validDirections[0];
     float maxDistance = 0.0f;
 
-    std::deque<Vector2> ghostSegments;
-    Color ghostColor;
-    ProvideVisualData(ghostSegments, ghostColor);
-
-    if (ghostSegments.empty()) return;
-
-    Vector2 currentPos = ghostSegments[0];
+    if (bodySegments.empty()) return;
+    Vector2 currentPos = bodySegments[0];
 
     for (const auto& direction : validDirections) {
         Vector2 testPosition = {
@@ -189,7 +230,6 @@ void Ghost::MoveAwayFromPlayer(const Board& gameBoard, Vector2 playerPosition) {
             currentPos.y + direction.y
         };
 
-        // Zastosuj zawijanie granic
         if (testPosition.x < 0) testPosition.x = CELL_COUNT - 1;
         else if (testPosition.x >= CELL_COUNT) testPosition.x = 0;
         if (testPosition.y < 0) testPosition.y = CELL_COUNT - 1;
@@ -198,7 +238,6 @@ void Ghost::MoveAwayFromPlayer(const Board& gameBoard, Vector2 playerPosition) {
         float distX = fabsf(playerPosition.x - testPosition.x);
         float distY = fabsf(playerPosition.y - testPosition.y);
 
-        // Uwzglêdnij zawijanie w odleg³oœci
         if (distX > CELL_COUNT / 2) distX = CELL_COUNT - distX;
         if (distY > CELL_COUNT / 2) distY = CELL_COUNT - distY;
 
@@ -210,5 +249,116 @@ void Ghost::MoveAwayFromPlayer(const Board& gameBoard, Vector2 playerPosition) {
         }
     }
 
-    UpdateDirection(bestDirection);
+    currentDirection = bestDirection;
+}
+
+Vector2 Ghost::CalculateRedTarget(Vector2 playerPosition) {
+    return playerPosition;
+}
+
+Vector2 Ghost::CalculateGreenTarget(Vector2 playerPosition, Vector2 playerDirection) {
+    Vector2 target = playerPosition;
+
+    if (playerDirection.x == 0 && playerDirection.y == 0) {
+        playerDirection = { 1, 0 };
+    }
+
+    target.x += playerDirection.x * 4;
+    target.y += playerDirection.y * 4;
+
+    if (target.x < 0) target.x += CELL_COUNT;
+    else if (target.x >= CELL_COUNT) target.x -= CELL_COUNT;
+    if (target.y < 0) target.y += CELL_COUNT;
+    else if (target.y >= CELL_COUNT) target.y -= CELL_COUNT;
+
+    return target;
+}
+
+Vector2 Ghost::CalculatePurpleTarget(Vector2 playerPosition, Vector2 playerDirection, Vector2 greenGhostPosition) {
+    Vector2 target;
+
+    if (playerDirection.x == 0 && playerDirection.y == 0) {
+        playerDirection = { 1, 0 };
+    }
+
+    Vector2 pointInFrontOfPlayer = {
+        playerPosition.x + playerDirection.x * 2,
+        playerPosition.y + playerDirection.y * 2
+    };
+
+    if (pointInFrontOfPlayer.x < 0) pointInFrontOfPlayer.x += CELL_COUNT;
+    else if (pointInFrontOfPlayer.x >= CELL_COUNT) pointInFrontOfPlayer.x -= CELL_COUNT;
+    if (pointInFrontOfPlayer.y < 0) pointInFrontOfPlayer.y += CELL_COUNT;
+    else if (pointInFrontOfPlayer.y >= CELL_COUNT) pointInFrontOfPlayer.y -= CELL_COUNT;
+
+    Vector2 vectorFromGreenToPoint = {
+        pointInFrontOfPlayer.x - greenGhostPosition.x,
+        pointInFrontOfPlayer.y - greenGhostPosition.y
+    };
+
+    vectorFromGreenToPoint.x *= 2;
+    vectorFromGreenToPoint.y *= 2;
+
+    target = {
+        greenGhostPosition.x + vectorFromGreenToPoint.x,
+        greenGhostPosition.y + vectorFromGreenToPoint.y
+    };
+
+    if (target.x < 0) target.x += CELL_COUNT;
+    else if (target.x >= CELL_COUNT) target.x -= CELL_COUNT;
+    if (target.y < 0) target.y += CELL_COUNT;
+    else if (target.y >= CELL_COUNT) target.y -= CELL_COUNT;
+
+    return target;
+}
+
+void Ghost::MoveTowardTarget(const Board& gameBoard, Vector2 target) {
+    std::vector<Vector2> possibleDirections = {
+        {1, 0}, {-1, 0}, {0, 1}, {0, -1}
+    };
+
+    std::vector<Vector2> validDirections;
+    for (const auto& direction : possibleDirections) {
+        if (CanMoveInDirection(direction, gameBoard)) {
+            validDirections.push_back(direction);
+        }
+    }
+
+    if (validDirections.empty()) {
+        DetermineRandomMovement(gameBoard);
+        return;
+    }
+
+    Vector2 bestDirection = validDirections[0];
+    float minDistance = 9999.0f;
+
+    if (bodySegments.empty()) return;
+    Vector2 currentPos = bodySegments[0];
+
+    for (const auto& direction : validDirections) {
+        Vector2 testPosition = {
+            currentPos.x + direction.x,
+            currentPos.y + direction.y
+        };
+
+        if (testPosition.x < 0) testPosition.x = CELL_COUNT - 1;
+        else if (testPosition.x >= CELL_COUNT) testPosition.x = 0;
+        if (testPosition.y < 0) testPosition.y = CELL_COUNT - 1;
+        else if (testPosition.y >= CELL_COUNT) testPosition.y = 0;
+
+        float distX = fabsf(target.x - testPosition.x);
+        float distY = fabsf(target.y - testPosition.y);
+
+        if (distX > CELL_COUNT / 2) distX = CELL_COUNT - distX;
+        if (distY > CELL_COUNT / 2) distY = CELL_COUNT - distY;
+
+        float distance = sqrtf(distX * distX + distY * distY);
+
+        if (distance < minDistance) {
+            minDistance = distance;
+            bestDirection = direction;
+        }
+    }
+
+    currentDirection = bestDirection;
 }
