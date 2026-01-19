@@ -31,6 +31,7 @@
   <ItemGroup>
     <ClInclude Include="Board.h" />
     <ClInclude Include="Constants.h" />
+    <ClInclude Include="Enums.h" />
     <ClInclude Include="GameController.h" />
     <ClInclude Include="GameModel.h" />
     <ClInclude Include="GameView.h" />

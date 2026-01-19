@@ -5,14 +5,15 @@
 #include "Ghost.h"
 #include "ScoreManager.h"
 #include "Board.h"
+#include "Enums.h"
 #include <string>
 
 class GameModel {
 private:
     Snake playerCharacter;
-    Ghost redGhost;
-    Ghost greenGhost;
-    Ghost purpleGhost;
+    RedGhost redGhost;
+    GreenGhost greenGhost;
+    PurpleGhost purpleGhost;
     ScoreManager scoreSystem;
     Board gameBoard;
     std::string playerIdentifier;
@@ -20,13 +21,22 @@ private:
     int currentPoints;
     bool isGameCompleted;
     bool isGhostFrightened;
-    int frightenedTimer;
+    double frightenedTimer; // Changed to double for better time tracking
+    Difficulty currentDifficulty;
+
+    // Ghost dead timers
+    double redDeadTimer;
+    double greenDeadTimer;
+    double purpleDeadTimer;
+
+    Vector2 FindSafeSpawnPosition() const;
 
 public:
     GameModel();
 
     void ProcessCharacterInput(int characterCode, bool isBackspace);
     void ProcessDirectionInput(int directionKey);
+    void SetDifficulty(Difficulty difficulty);
 
     void AdvanceGameLogic();
     void CompleteGameWithSave();

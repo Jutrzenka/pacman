@@ -3,17 +3,22 @@
 #include "Constants.h"
 
 GameModel::GameModel() :
-    redGhost(Ghost::RED_GHOST),
-    greenGhost(Ghost::GREEN_GHOST),
-    purpleGhost(Ghost::PURPLE_GHOST),
+    // Derived ghosts are initialized by their default constructors now
     currentPoints(0),
     isGameCompleted(false),
     isGhostFrightened(false),
-    frightenedTimer(0) {
+    frightenedTimer(0),
+    currentDifficulty(MEDIUM), 
+    redDeadTimer(0), greenDeadTimer(0), purpleDeadTimer(0) { // Default difficulty
 
     std::string highScoreText;
-    scoreSystem.GetHighScore();
+    scoreSystem.GetHighScore(); // This load call might be redundant but harmless
     topScoreDisplay = scoreSystem.GetHighScore();
+    
+    // Ensure all ghosts are alive
+    redGhost.SetDead(false);
+    greenGhost.SetDead(false);
+    purpleGhost.SetDead(false);
 }
 
 void GameModel::ProcessCharacterInput(int characterCode, bool isBackspace) {
@@ -36,13 +41,50 @@ void GameModel::ProcessDirectionInput(int directionKey) {
     playerCharacter.QueueDirection(desiredDirection, GetTime());
 }
 
+void GameModel::SetDifficulty(Difficulty difficulty) {
+    currentDifficulty = difficulty;
+    gameBoard.SetDifficulty(difficulty);
+    ResetEntireGame();
+}
+
 void GameModel::AdvanceGameLogic() {
+    // 1. Update Frightened Timer
     if (isGhostFrightened) {
         frightenedTimer--;
         if (frightenedTimer <= 0) {
             isGhostFrightened = false;
         }
     }
+
+    // 2. Update Ghost Dead Timers
+    if (redGhost.IsDead()) {
+        redDeadTimer -= 0.12; // Approximation of delta time
+        if (redDeadTimer <= 0) {
+            Vector2 spawn = FindSafeSpawnPosition();
+            redGhost.ResetToPosition(spawn);
+        }
+    }
+
+    if (greenGhost.IsDead()) {
+        greenDeadTimer -= 0.12;
+        if (greenDeadTimer <= 0) {
+            Vector2 spawn = FindSafeSpawnPosition();
+            greenGhost.ResetToPosition(spawn);
+        }
+    }
+
+    if (purpleGhost.IsDead()) {
+        purpleDeadTimer -= 0.12;
+        if (purpleDeadTimer <= 0) {
+            Vector2 spawn = FindSafeSpawnPosition();
+            purpleGhost.ResetToPosition(spawn);
+        }
+    }
+
+    // Update ghost colors based on frightened state (only if alive)
+    if (!redGhost.IsDead()) redGhost.ApplyColor(isGhostFrightened ? BLUE : RED);
+    if (!greenGhost.IsDead()) greenGhost.ApplyColor(isGhostFrightened ? BLUE : GREEN);
+    if (!purpleGhost.IsDead()) purpleGhost.ApplyColor(isGhostFrightened ? BLUE : PURPLE);
 
     playerCharacter.PerformMovement(gameBoard);
 
@@ -54,7 +96,7 @@ void GameModel::AdvanceGameLogic() {
         Vector2 nextPos = playerCharacter.CalculateNextPosition();
         Vector2 playerDirection = { nextPos.x - playerSegments[0].x, nextPos.y - playerSegments[0].y };
 
-        Vector2 greenGhostPosition;
+        Vector2 greenGhostPosition = { 0, 0 }; // Initialize default
         std::deque<Vector2> greenSegments;
         Color greenColor;
         greenGhost.ProvideVisualData(greenSegments, greenColor);
@@ -62,9 +104,10 @@ void GameModel::AdvanceGameLogic() {
             greenGhostPosition = greenSegments[0];
         }
 
-        redGhost.UpdateAI(gameBoard, playerSegments[0], playerDirection, greenGhostPosition, isGhostFrightened);
-        greenGhost.UpdateAI(gameBoard, playerSegments[0], playerDirection, greenGhostPosition, isGhostFrightened);
-        purpleGhost.UpdateAI(gameBoard, playerSegments[0], playerDirection, greenGhostPosition, isGhostFrightened);
+        // Only update AI if ghost is ALIVE
+        if (!redGhost.IsDead()) redGhost.UpdateAI(gameBoard, playerSegments[0], playerDirection, greenGhostPosition, isGhostFrightened);
+        if (!greenGhost.IsDead()) greenGhost.UpdateAI(gameBoard, playerSegments[0], playerDirection, greenGhostPosition, isGhostFrightened);
+        if (!purpleGhost.IsDead()) purpleGhost.UpdateAI(gameBoard, playerSegments[0], playerDirection, greenGhostPosition, isGhostFrightened);
 
         redGhost.PerformMovement(gameBoard);
         greenGhost.PerformMovement(gameBoard);
@@ -85,9 +128,10 @@ void GameModel::AdvanceGameLogic() {
             for (const auto& ghostSegment : redSegments) {
                 if ((int)playerSegment.x == (int)ghostSegment.x && (int)playerSegment.y == (int)ghostSegment.y) {
                     if (isGhostFrightened) {
-                        redGhost.ResetToPosition({ 20, 5 });
+                        redGhost.SetDead(true);
+                        redDeadTimer = 5.0; // 5 seconds
                         currentPoints += 200;
-                        isGhostFrightened = false;
+                        playerCharacter.ScheduleGrowth();
                     }
                     else {
                         CompleteGameWithSave();
@@ -102,9 +146,10 @@ void GameModel::AdvanceGameLogic() {
             for (const auto& ghostSegment : greenSegments) {
                 if ((int)playerSegment.x == (int)ghostSegment.x && (int)playerSegment.y == (int)ghostSegment.y) {
                     if (isGhostFrightened) {
-                        greenGhost.ResetToPosition({ 5, 5 });
+                        greenGhost.SetDead(true);
+                        greenDeadTimer = 5.0; // 5 seconds
                         currentPoints += 200;
-                        isGhostFrightened = false;
+                        playerCharacter.ScheduleGrowth();
                     }
                     else {
                         CompleteGameWithSave();
@@ -119,9 +164,10 @@ void GameModel::AdvanceGameLogic() {
             for (const auto& ghostSegment : purpleSegments) {
                 if ((int)playerSegment.x == (int)ghostSegment.x && (int)playerSegment.y == (int)ghostSegment.y) {
                     if (isGhostFrightened) {
-                        purpleGhost.ResetToPosition({ 10, 5 });
+                        purpleGhost.SetDead(true);
+                        purpleDeadTimer = 5.0; // 5 seconds
                         currentPoints += 200;
-                        isGhostFrightened = false;
+                        playerCharacter.ScheduleGrowth();
                     }
                     else {
                         CompleteGameWithSave();
@@ -137,13 +183,17 @@ void GameModel::AdvanceGameLogic() {
         int headX = (int)head.x;
         int headY = (int)head.y;
 
-        if (gameBoard.CheckFoodPresence(headX, headY)) {
+        // Check types BEFORE consumption
+        bool isPowerPellet = gameBoard.CheckPowerPelletPresence(headX, headY);
+        bool isFood = gameBoard.CheckFoodPresence(headX, headY);
+
+        if (isFood) {
             gameBoard.ConsumeFoodAtPosition(headX, headY);
 
-            if (gameBoard.CheckPowerPelletPresence(headX, headY)) {
+            if (isPowerPellet) {
                 currentPoints += 50;
                 isGhostFrightened = true;
-                frightenedTimer = 300;
+                frightenedTimer = 42; // ~5 seconds at 0.12s update interval
             }
             else {
                 currentPoints += 10;
@@ -157,18 +207,66 @@ void GameModel::AdvanceGameLogic() {
     }
 }
 
+Vector2 GameModel::FindSafeSpawnPosition() const {
+    int maxAttempts = 100;
+    Vector2 bestPos = { 10, 10 }; // Default fallback
+
+    Vector2 playerHead = { -100, -100 };
+    std::deque<Vector2> playerBody;
+    Color tempColor;
+    // We cannot change const, so we rely on what we have.
+    // playerCharacter is member, we can access it.
+    // However, the method is marked const, so we use const method of Snake.
+    // Snake::ProvideVisualData works but copies.
+    playerCharacter.ProvideVisualData(playerBody, tempColor);
+    
+    if(!playerBody.empty()) {
+        playerHead = playerBody[0];
+    }
+
+    for (int i = 0; i < maxAttempts; i++) {
+        int x = GetRandomValue(1, CELL_COUNT - 2);
+        int y = GetRandomValue(1, CELL_COUNT - 2);
+
+        // 1. Is Wall?
+        if (gameBoard.CheckWallPresence(x, y)) continue;
+
+        // 2. Is on Snake?
+        bool onSnake = false;
+        for (const auto& segment : playerBody) {
+            if ((int)segment.x == x && (int)segment.y == y) {
+                onSnake = true;
+                break;
+            }
+        }
+        if (onSnake) continue;
+
+        // 3. Distance from Head (if exists)
+        if (!playerBody.empty()) {
+            float dist = std::abs(x - playerHead.x) + std::abs(y - playerHead.y);
+            if (dist < 5) continue; // Too close
+        }
+
+        return { (float)x, (float)y };
+    }
+
+    return bestPos;
+}
+
 void GameModel::CompleteGameWithSave() {
     scoreSystem.SaveScore(playerIdentifier, currentPoints);
     topScoreDisplay = scoreSystem.GetHighScore();
-    playerCharacter.InitializeAtPosition({ 6, 9 });
-    redGhost.ResetToPosition({ 20, 5 });
-    greenGhost.ResetToPosition({ 5, 5 });
-    purpleGhost.ResetToPosition({ 10, 5 });
-    gameBoard.ResetAllFood();
-    currentPoints = 0;
+    ResetEntireGame(); 
+    // ^ Reset logic consolidated.
+    // Previously reset was manual here.
+    // ResetEntireGame resets internal state + ghosts.
+    
+    isGameCompleted = true; // This will trigger MENU state in Controller
+    
+    // Note: ResetEntireGame sets isGameCompleted = false. 
+    // We want it true so controller sees it.
+    // So we reset first to clear board, then set flag.
     isGameCompleted = true;
-    isGhostFrightened = false;
-    frightenedTimer = 0;
 }
 
 void GameModel::ResetEntireGame() {
@@ -176,6 +274,15 @@ void GameModel::ResetEntireGame() {
     redGhost.ResetToPosition({ 20, 5 });
     greenGhost.ResetToPosition({ 5, 5 });
     purpleGhost.ResetToPosition({ 10, 5 });
+    
+    // Reset Dead State
+    redGhost.SetDead(false);
+    greenGhost.SetDead(false);
+    purpleGhost.SetDead(false);
+    redDeadTimer = 0;
+    greenDeadTimer = 0;
+    purpleDeadTimer = 0;
+
     gameBoard.ResetAllFood();
     currentPoints = 0;
     isGameCompleted = false;
@@ -188,6 +295,15 @@ void GameModel::ResetCurrentLevel() {
     redGhost.ResetToPosition({ 20, 5 });
     greenGhost.ResetToPosition({ 5, 5 });
     purpleGhost.ResetToPosition({ 10, 5 });
+    
+    // Reset Dead State
+    redGhost.SetDead(false);
+    greenGhost.SetDead(false);
+    purpleGhost.SetDead(false);
+    redDeadTimer = 0;
+    greenDeadTimer = 0;
+    purpleDeadTimer = 0;
+
     gameBoard.ResetAllFood();
     isGhostFrightened = false;
     frightenedTimer = 0;
@@ -226,21 +342,21 @@ void GameModel::ProvideRenderingData(std::deque<Vector2>& playerSegments,
         redGhostLocation = redSegments[0];
     }
     else {
-        redGhostLocation = { 0, 0 };
+        redGhostLocation = { -100, -100 };
     }
 
     if (!greenSegments.empty()) {
         greenGhostLocation = greenSegments[0];
     }
     else {
-        greenGhostLocation = { 0, 0 };
+        greenGhostLocation = { -100, -100 };
     }
 
     if (!purpleSegments.empty()) {
         purpleGhostLocation = purpleSegments[0];
     }
     else {
-        purpleGhostLocation = { 0, 0 };
+        purpleGhostLocation = { -100, -100 };
     }
 
     gameBoard.ProvideGridData(boardGrid);
