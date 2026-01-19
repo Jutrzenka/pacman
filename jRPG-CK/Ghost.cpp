@@ -7,15 +7,15 @@ Ghost::Ghost(GhostType color) : ghostColorType(color), shouldGrowNextMove(false)
     switch (ghostColorType) {
     case RED_GHOST:
         visualColor = RED;
-        speedModifier = 5;  // 80% prêdkoœci (porusza siê 8 razy na 10 klatek)
+        speedModifier = 3;
         break;
     case GREEN_GHOST:
         visualColor = GREEN;
-        speedModifier = 6;  // 60% prêdkoœci
+        speedModifier = 4;
         break;
     case PURPLE_GHOST:
         visualColor = PURPLE;
-        speedModifier = 7;  // 70% prêdkoœci
+        speedModifier = 5;
         break;
     }
     ResetToPosition({ 20, 5 });

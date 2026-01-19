@@ -71,53 +71,62 @@ void GameModel::AdvanceGameLogic() {
         purpleGhost.PerformMovement(gameBoard);
     }
 
+    // Pobierz segmenty duchów
     std::deque<Vector2> redSegments, greenSegments, purpleSegments;
     Color redColor, greenColor, purpleColor;
     redGhost.ProvideVisualData(redSegments, redColor);
     greenGhost.ProvideVisualData(greenSegments, greenColor);
     purpleGhost.ProvideVisualData(purpleSegments, purpleColor);
 
-    if (!playerSegments.empty()) {
-        Vector2 playerPos = playerSegments[0];
-
+    // SprawdŸ kolizjê dla CA£EGO cia³a wê¿a z duchami
+    for (const auto& playerSegment : playerSegments) {
+        // Czerwony duch
         if (!redSegments.empty()) {
-            Vector2 ghostPos = redSegments[0];
-            if ((int)playerPos.x == (int)ghostPos.x && (int)playerPos.y == (int)ghostPos.y) {
-                if (isGhostFrightened) {
-                    redGhost.ResetToPosition({ 20, 5 });
-                    currentPoints += 200;
-                    isGhostFrightened = false;
-                }
-                else {
-                    CompleteGameWithSave();
+            for (const auto& ghostSegment : redSegments) {
+                if ((int)playerSegment.x == (int)ghostSegment.x && (int)playerSegment.y == (int)ghostSegment.y) {
+                    if (isGhostFrightened) {
+                        redGhost.ResetToPosition({ 20, 5 });
+                        currentPoints += 200;
+                        isGhostFrightened = false;
+                    }
+                    else {
+                        CompleteGameWithSave();
+                        return; // Koñczymy sprawdzanie, gra ju¿ siê zakoñczy³a
+                    }
                 }
             }
         }
 
+        // Zielony duch
         if (!greenSegments.empty()) {
-            Vector2 ghostPos = greenSegments[0];
-            if ((int)playerPos.x == (int)ghostPos.x && (int)playerPos.y == (int)ghostPos.y) {
-                if (isGhostFrightened) {
-                    greenGhost.ResetToPosition({ 5, 5 });
-                    currentPoints += 200;
-                    isGhostFrightened = false;
-                }
-                else {
-                    CompleteGameWithSave();
+            for (const auto& ghostSegment : greenSegments) {
+                if ((int)playerSegment.x == (int)ghostSegment.x && (int)playerSegment.y == (int)ghostSegment.y) {
+                    if (isGhostFrightened) {
+                        greenGhost.ResetToPosition({ 5, 5 });
+                        currentPoints += 200;
+                        isGhostFrightened = false;
+                    }
+                    else {
+                        CompleteGameWithSave();
+                        return;
+                    }
                 }
             }
         }
 
+        // Fioletowy duch
         if (!purpleSegments.empty()) {
-            Vector2 ghostPos = purpleSegments[0];
-            if ((int)playerPos.x == (int)ghostPos.x && (int)playerPos.y == (int)ghostPos.y) {
-                if (isGhostFrightened) {
-                    purpleGhost.ResetToPosition({ 10, 5 });
-                    currentPoints += 200;
-                    isGhostFrightened = false;
-                }
-                else {
-                    CompleteGameWithSave();
+            for (const auto& ghostSegment : purpleSegments) {
+                if ((int)playerSegment.x == (int)ghostSegment.x && (int)playerSegment.y == (int)ghostSegment.y) {
+                    if (isGhostFrightened) {
+                        purpleGhost.ResetToPosition({ 10, 5 });
+                        currentPoints += 200;
+                        isGhostFrightened = false;
+                    }
+                    else {
+                        CompleteGameWithSave();
+                        return;
+                    }
                 }
             }
         }

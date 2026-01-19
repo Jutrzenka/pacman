@@ -1,47 +1,11 @@
-Gracz: Kacper | Wynik: 6
-Gracz: Kacper | Wynik: 0
-Gracz: Kacper | Wynik: 0
-Gracz: Kacper | Wynik: 13
-Gracz: Filip | Wynik: 4
-Gracz: Kacper | Wynik: 3540
-Gracz: Kappi | Wynik: 1840
-Gracz: Kacper | Wynik: 640
-Gracz: das | Wynik: 1260
-Gracz: Kacper | Wynik: 1300
-Gracz: Kacper | Wynik: 1810
-Gracz: Kacper | Wynik: 1190
-Gracz: Kacper | Wynik: 290
-Gracz: Kacper | Wynik: 1580
-Gracz: Filip | Wynik: 1440
-Gracz: Kacper | Wynik: 180
-Gracz: Kacper | Wynik: 10
-Gracz: Kacper | Wynik: 820
-Gracz: Kacper | Wynik: 10
-Gracz: Kacper | Wynik: 940
-Gracz: Kacper | Wynik: 10
-Gracz: Kacper | Wynik: 1690
-Gracz: Kacper | Wynik: 10
-Gracz: Filip | Wynik: 1330
-Gracz: Fifi | Wynik: 1150
-Gracz: Kacper | Wynik: 1810
-Gracz: Kacper | Wynik: 540
-Gracz: Kacper | Wynik: 320
-Gracz: Fifi | Wynik: 370
-Gracz: Fifi | Wynik: 1810
-Gracz: Kacper | Wynik: 1150
-Gracz: Filip | Wynik: 1740
-Gracz: Filip | Wynik: 960
-Gracz: Filip | Wynik: 230
-Gracz: Kacper | Wynik: 1070
-Gracz: Kacper | Wynik: 560
-Gracz: Filip | Wynik: 790
-Gracz: Filip | Wynik: 830
-Gracz: Filip | Wynik: 1180
-Gracz: Filip | Wynik: 360
-Gracz: Filip | Wynik: 500
-Gracz: Filip | Wynik: 470
-Gracz: Filip | Wynik: 270
-Gracz: Filip | Wynik: 1640
-Gracz: Zuzia | Wynik: 1020
-Gracz: ZuziaFifi | Wynik: 160
-Gracz: ZuziaFifi | Wynik: 960
+Gracz: jan pawel | Wynik: 160
+Gracz: jan pawel | Wynik: 160
+Gracz: jan pawel ii | Wynik: 1390
+Gracz: jan pawel ii | Wynik: 260
+Gracz: jan pawel ii | Wynik: 800
+Gracz: jan pawel ii | Wynik: 460
+Gracz: jan pawel ii | Wynik: 3180
+Gracz: Kacp | Wynik: 430
+Gracz: Kacp | Wynik: 200
+Gracz: Kacp | Wynik: 400
+Gracz: Kacp | Wynik: 870
