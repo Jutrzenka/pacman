@@ -19,6 +19,7 @@ public:
 
     void SetDead(bool dead);
     bool IsDead() const;
+    void SetSpeedModifier(int newSpeed);
 
     virtual void UpdateAI(const Board& gameBoard, Vector2 playerPosition,
         Vector2 playerDirection, Vector2 greenGhostPosition,

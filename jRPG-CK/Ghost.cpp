@@ -26,6 +26,12 @@ bool Ghost::IsDead() const {
     return isDead;
 }
 
+void Ghost::SetSpeedModifier(int newSpeed) {
+    if (newSpeed < 1) newSpeed = 1;
+    if (newSpeed > 9) newSpeed = 9; // Avoid moving every frame or glitching
+    speedModifier = newSpeed;
+}
+
 void Ghost::PerformMovement(const Board& board) {
     if (isDead) return;
 
@@ -172,16 +178,28 @@ void Ghost::MoveAwayFromPlayer(const Board& gameBoard, Vector2 playerPosition) {
         {1, 0}, {-1, 0}, {0, 1}, {0, -1}
     };
 
+    Vector2 oppositeDir = { -currentDirection.x, -currentDirection.y };
+    bool hasDirection = (currentDirection.x != 0 || currentDirection.y != 0);
+
     std::vector<Vector2> validDirections;
     for (const auto& direction : possibleDirections) {
+        // Prevent moving backwards (180 turn)
+        if (hasDirection && direction.x == oppositeDir.x && direction.y == oppositeDir.y) {
+            continue;
+        }
+
         if (CanMoveInDirection(direction, gameBoard)) {
             validDirections.push_back(direction);
         }
     }
 
     if (validDirections.empty()) {
-        DetermineRandomMovement(gameBoard);
-        return;
+        if (hasDirection && CanMoveInDirection(oppositeDir, gameBoard)) {
+            validDirections.push_back(oppositeDir);
+        } else {
+            DetermineRandomMovement(gameBoard);
+            return;
+        }
     }
 
     Vector2 bestDirection = validDirections[0];
@@ -223,20 +241,32 @@ void Ghost::MoveTowardTarget(const Board& gameBoard, Vector2 target) {
         {1, 0}, {-1, 0}, {0, 1}, {0, -1}
     };
 
+    Vector2 oppositeDir = { -currentDirection.x, -currentDirection.y };
+    bool hasDirection = (currentDirection.x != 0 || currentDirection.y != 0);
+
     std::vector<Vector2> validDirections;
     for (const auto& direction : possibleDirections) {
+        // Prevent moving backwards (180 turn)
+        if (hasDirection && direction.x == oppositeDir.x && direction.y == oppositeDir.y) {
+            continue;
+        }
+
         if (CanMoveInDirection(direction, gameBoard)) {
             validDirections.push_back(direction);
         }
     }
 
     if (validDirections.empty()) {
-        DetermineRandomMovement(gameBoard);
-        return;
+        if (hasDirection && CanMoveInDirection(oppositeDir, gameBoard)) {
+            validDirections.push_back(oppositeDir);
+        } else {
+            DetermineRandomMovement(gameBoard);
+            return;
+        }
     }
 
     Vector2 bestDirection = validDirections[0];
-    float minDistance = 9999.0f;
+    float minDistance = 99999.0f; // Increased max val
 
     if (bodySegments.empty()) return;
     Vector2 currentPos = bodySegments[0];

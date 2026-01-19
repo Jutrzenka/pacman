@@ -21,6 +21,20 @@ GameModel::GameModel() :
     purpleGhost.SetDead(false);
 }
 
+void GameModel::SetNextDifficulty() {
+    Difficulty diff = currentDifficulty;
+    if (diff == EASY) SetDifficulty(MEDIUM);
+    else if (diff == MEDIUM) SetDifficulty(HARD);
+    else if (diff == HARD) SetDifficulty(EASY);
+}
+
+void GameModel::SetPreviousDifficulty() {
+    Difficulty diff = currentDifficulty;
+    if (diff == EASY) SetDifficulty(HARD);
+    else if (diff == MEDIUM) SetDifficulty(EASY);
+    else if (diff == HARD) SetDifficulty(MEDIUM);
+}
+
 void GameModel::ProcessCharacterInput(int characterCode, bool isBackspace) {
     if (isBackspace && !playerIdentifier.empty()) {
         playerIdentifier.pop_back();
@@ -41,9 +55,27 @@ void GameModel::ProcessDirectionInput(int directionKey) {
     playerCharacter.QueueDirection(desiredDirection, GetTime());
 }
 
+Difficulty GameModel::GetDifficulty() const {
+    return currentDifficulty;
+}
+
 void GameModel::SetDifficulty(Difficulty difficulty) {
     currentDifficulty = difficulty;
     gameBoard.SetDifficulty(difficulty);
+    
+    int modifier = 0;
+    if (difficulty == EASY) modifier = -1;
+    if (difficulty == HARD) modifier = 2; // Make hard significantly faster
+
+    // Base speeds: Red=3, Green=4, Purple=5
+    // Easy: 2, 3, 4
+    // Medium: 3, 4, 5
+    // Hard: 5, 6, 7
+    
+    redGhost.SetSpeedModifier(3 + modifier);
+    greenGhost.SetSpeedModifier(4 + modifier);
+    purpleGhost.SetSpeedModifier(5 + modifier);
+
     ResetEntireGame();
 }
 
@@ -270,24 +302,9 @@ void GameModel::CompleteGameWithSave() {
 }
 
 void GameModel::ResetEntireGame() {
-    playerCharacter.InitializeAtPosition({ 6, 9 });
-    redGhost.ResetToPosition({ 20, 5 });
-    greenGhost.ResetToPosition({ 5, 5 });
-    purpleGhost.ResetToPosition({ 10, 5 });
-    
-    // Reset Dead State
-    redGhost.SetDead(false);
-    greenGhost.SetDead(false);
-    purpleGhost.SetDead(false);
-    redDeadTimer = 0;
-    greenDeadTimer = 0;
-    purpleDeadTimer = 0;
-
-    gameBoard.ResetAllFood();
+    ResetCurrentLevel();
     currentPoints = 0;
     isGameCompleted = false;
-    isGhostFrightened = false;
-    frightenedTimer = 0;
 }
 
 void GameModel::ResetCurrentLevel() {

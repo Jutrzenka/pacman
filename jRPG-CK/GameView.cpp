@@ -25,10 +25,35 @@ void GameView::DrawMenu(const GameModel& model) {
         375 - MeasureText(TextFormat("TWOJE IMIE: %s", playerName.c_str()), 20) / 2,
         400, 20, WHITE);
 
+    // Difficulty Selection
+    Difficulty diff = model.GetDifficulty();
+    
+    // Updated text for arrow key navigation
+    DrawText("< POZIOM TRUDNOSCI >", 250, 430, 20, WHITE);
+    
+    const char* diffText = "UNKNOWN";
+    Color diffColor = WHITE;
+    
+    if (diff == EASY) {
+        diffText = "EASY";
+        diffColor = GREEN;
+    } else if (diff == MEDIUM) {
+        diffText = "MEDIUM";
+        diffColor = YELLOW;
+    } else if (diff == HARD) {
+        diffText = "HARD";
+        diffColor = RED;
+    }
+    
+    // Draw centered difficulty text
+    // Center point is approx 375 (750/2)
+    DrawText(diffText, 375 - MeasureText(diffText, 30) / 2, 460, 30, diffColor);
+
+
     if (!playerName.empty()) {
         DrawText("NACIŒNIJ ENTER, ABY ZACZ¥Æ",
             375 - MeasureText("NACIŒNIJ ENTER, ABY ZACZ¥Æ", 20) / 2,
-            480, 20, GREEN);
+            500, 20, GREEN); // Moved down slightly
     }
 }
 

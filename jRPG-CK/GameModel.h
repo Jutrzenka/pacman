@@ -37,6 +37,9 @@ public:
     void ProcessCharacterInput(int characterCode, bool isBackspace);
     void ProcessDirectionInput(int directionKey);
     void SetDifficulty(Difficulty difficulty);
+    Difficulty GetDifficulty() const;
+    void SetNextDifficulty();
+    void SetPreviousDifficulty();
 
     void AdvanceGameLogic();
     void CompleteGameWithSave();

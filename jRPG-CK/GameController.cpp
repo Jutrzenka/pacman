@@ -36,9 +36,8 @@ void GameController::ProcessInput() {
             state = GAMEPLAY;  // Dodaj mo¿liwoœæ pominiêcia menu
         }
 
-        if (IsKeyPressed(KEY_ONE)) model.SetDifficulty(EASY);
-        if (IsKeyPressed(KEY_TWO)) model.SetDifficulty(MEDIUM);
-        if (IsKeyPressed(KEY_THREE)) model.SetDifficulty(HARD);
+        if (IsKeyPressed(KEY_RIGHT)) model.SetNextDifficulty();
+        if (IsKeyPressed(KEY_LEFT)) model.SetPreviousDifficulty();
     }
     else if (state == GAMEPLAY) {
         if (IsKeyPressed(KEY_UP)) model.ProcessDirectionInput(KEY_UP);
